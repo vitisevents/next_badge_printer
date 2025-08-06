@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { writeFileSync } from 'fs'
+import { join } from 'path'
 
 const API_BASE = 'https://api.tickettailor.com/v1'
 
@@ -16,27 +18,123 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'event_id is required' }, { status: 400 })
     }
 
-    // Get tickets from orders data for this event
-    const response = await fetch(`${API_BASE}/orders`, {
-      headers: {
-        'Authorization': `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`,
-        'Accept': 'application/json'
-      }
+    // Create debug log
+    const debugLog: any[] = []
+    debugLog.push({
+      timestamp: new Date().toISOString(),
+      message: 'Starting ticket fetch',
+      eventId
     })
 
-    if (!response.ok) {
-      throw new Error(`Failed to fetch orders: ${response.statusText}`)
-    }
+    // Use a Set to track unique order IDs and prevent duplicates
+    const uniqueOrderIds = new Set<string>()
+    let allOrders: any[] = []
+    let lastOrderId: string | null = null
+    let hasMore = true
+    let pageCount = 0
+    
+    while (hasMore) {
+      // TicketTailor uses cursor-based pagination with 'starting_after'
+      const url = lastOrderId 
+        ? `${API_BASE}/orders?limit=100&starting_after=${lastOrderId}`
+        : `${API_BASE}/orders?limit=100`
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`,
+          'Accept': 'application/json'
+        }
+      })
 
-    const ordersData = await response.json()
-    const orders = ordersData.data || []
+      if (!response.ok) {
+        throw new Error(`Failed to fetch orders: ${response.statusText}`)
+      }
+
+      const ordersData = await response.json()
+      const pageOrders = ordersData.data || []
+      
+      pageCount++
+      
+      // Log sample order to understand structure
+      if (pageCount === 1 && pageOrders.length > 0) {
+        debugLog.push({
+          message: 'Sample order structure',
+          order: pageOrders[0],
+          event_summary: pageOrders[0].event_summary,
+          event_id_in_order: pageOrders[0].event_summary?.event_id
+        })
+      }
+      
+      // Filter orders for this event
+      let newOrdersCount = 0
+      const eventOrders = pageOrders.filter((order: any) => {
+        if (order.event_summary?.event_id === eventId) {
+          if (!uniqueOrderIds.has(order.id)) {
+            uniqueOrderIds.add(order.id)
+            newOrdersCount++
+            return true
+          }
+        }
+        return false
+      })
+      
+      // Update lastOrderId for next page (use the last order ID from the current page)
+      if (pageOrders.length > 0) {
+        lastOrderId = pageOrders[pageOrders.length - 1].id
+      }
+      
+      debugLog.push({
+        page: pageCount,
+        totalOrdersInPage: pageOrders.length,
+        newOrdersForEvent: newOrdersCount,
+        totalUniqueOrders: uniqueOrderIds.size,
+        eventIdWeAreLookingFor: eventId,
+        lastOrderId,
+        nextUrl: ordersData.links?.next
+      })
+      
+      allOrders = allOrders.concat(eventOrders)
+      
+      // Check if there are more pages
+      hasMore = ordersData.links?.next ? true : false
+      
+      console.log(`Page ${pageCount}: ${pageOrders.length} total orders, ${newOrdersCount} new for event, ${uniqueOrderIds.size} unique so far`)
+      
+      // Stop if we got no orders on this page
+      if (pageOrders.length === 0) {
+        console.log('No more orders to fetch')
+        break
+      }
+      
+      // Safety check to prevent infinite loops
+      if (pageCount > 50) {
+        console.warn('Reached maximum pagination limit')
+        break
+      }
+    }
+    
+    const orders = allOrders
     
     // Extract tickets from orders for the specified event
     const tickets: any[] = []
     
+    // Log first order details for debugging
+    if (orders.length > 0) {
+      debugLog.push({
+        message: 'First order with tickets',
+        orderId: orders[0].id,
+        eventId: orders[0].event_summary?.event_id,
+        ticketCount: orders[0].issued_tickets?.length,
+        firstTicket: orders[0].issued_tickets?.[0]
+      })
+    }
+    
     orders.forEach((order: any) => {
-      if (order.event_summary?.event_id === eventId && order.issued_tickets) {
+      // Only process completed orders, not cancelled or pending
+      if (order.status === 'completed' && order.issued_tickets) {  // Already filtered by event above
         order.issued_tickets.forEach((ticket: any) => {
+          // Only include valid tickets, not voided ones
+          if (ticket.status !== 'voided' && !ticket.voided_at) {
           // Merge ticket and order custom questions
           const customQuestions: Record<string, string> = {}
           
@@ -72,11 +170,30 @@ export async function GET(request: NextRequest) {
             buyer_last_name: order.buyer_details.last_name,
             buyer_phone: order.buyer_details.phone
           })
+          }  // Close the status check
         })
       }
     })
     
     console.log(`Found ${tickets.length} tickets for event ${eventId}`)
+    
+    // Write debug log to file
+    debugLog.push({
+      message: 'Final summary',
+      totalOrders: orders.length,
+      totalTickets: tickets.length,
+      eventId,
+      uniqueTicketTypes: [...new Set(tickets.map(t => t.ticket_type_id))],
+      sampleTickets: tickets.slice(0, 3)
+    })
+    
+    try {
+      const logPath = join(process.cwd(), 'debug-tickets.log')
+      writeFileSync(logPath, JSON.stringify(debugLog, null, 2))
+      console.log('Debug log written to:', logPath)
+    } catch (err) {
+      console.error('Failed to write debug log:', err)
+    }
     
     return NextResponse.json(tickets)
   } catch (error) {
