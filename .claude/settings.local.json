@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx create-next-app:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "WebFetch(domain:developers.tickettailor.com)",
+      "Bash(npm install:*)"
+    ],
+    "deny": []
+  }
+}
