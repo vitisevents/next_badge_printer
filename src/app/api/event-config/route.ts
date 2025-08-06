@@ -54,6 +54,13 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date().toISOString()
     }
     
+    // Delete existing config if it exists, then create new one
+    try {
+      await del([`events/config/${config.eventId}.json`])
+    } catch (deleteError) {
+      console.warn('Could not delete existing event config:', deleteError)
+    }
+    
     // Save event configuration to blob storage
     const configBlob = await put(
       `events/config/${config.eventId}.json`,

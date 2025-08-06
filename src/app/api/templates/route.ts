@@ -52,6 +52,7 @@ export async function POST(request: NextRequest) {
     const configBlob = await put(`templates/config/${template.id}.json`, JSON.stringify(template), {
       access: 'public',
       contentType: 'application/json',
+      addRandomSuffix: false
     })
     
     return NextResponse.json(template)
@@ -71,6 +72,16 @@ export async function PUT(request: NextRequest) {
     
     // Upload new image if provided
     if (imageFile) {
+      // Delete old image first if it exists
+      try {
+        const { blobs } = await list({ prefix: `templates/images/${templateData.id}.` })
+        if (blobs.length > 0) {
+          await del(blobs.map(blob => blob.url))
+        }
+      } catch (deleteError) {
+        console.warn('Could not delete old image:', deleteError)
+      }
+      
       const imageBlob = await put(`templates/images/${templateData.id}.${imageFile.name.split('.').pop()}`, imageFile, {
         access: 'public',
       })
@@ -83,7 +94,14 @@ export async function PUT(request: NextRequest) {
       updatedAt: new Date().toISOString()
     }
     
-    // Update template configuration
+    // Delete existing config and create new one
+    try {
+      await del([`templates/config/${template.id}.json`])
+    } catch (deleteError) {
+      console.warn('Could not delete existing config:', deleteError)
+    }
+    
+    // Create new template configuration
     const configBlob = await put(`templates/config/${template.id}.json`, JSON.stringify(template), {
       access: 'public',
       contentType: 'application/json',
