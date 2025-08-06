@@ -47,23 +47,31 @@ export default function EnhancedBadgeComponent({ badgeData, template, fieldConfi
   const nameField = fields.find(f => f.label.toLowerCase().includes('name') || f.label.toLowerCase() === 'holder name')
   const otherFields = fields.filter(f => f !== nameField && f.value.trim() !== '')
 
+  // Calculate full size including bleed for proper full-bleed backgrounds
+  const bleed = template.bleed || 0
+  const fullWidth = template.pageSize.width + (bleed * 2)
+  const fullHeight = template.pageSize.height + (bleed * 2)
+  
   const badgeStyle = {
-    width: template.pageSize.cssWidth,
-    height: template.pageSize.cssHeight,
+    width: `${fullWidth}mm`,
+    height: `${fullHeight}mm`,
     backgroundColor: template.backgroundColor || '#ffffff',
     backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
-    border: '1px solid #000',
-    padding: `${template.bleed}mm`
+    border: '1px solid #e5e7eb', // Light border for screen display only
+    padding: `${bleed}mm`,
+    boxSizing: 'border-box' as const,
+    position: 'relative' as const
   }
 
   const contentStyle = {
-    width: '100%',
-    height: '100%',
+    width: template.pageSize.cssWidth,
+    height: template.pageSize.cssHeight,
     display: 'flex',
     flexDirection: 'column' as const,
-    position: 'relative' as const
+    position: 'relative' as const,
+    margin: '0 auto' // Center the content area within the full bleed area
   }
 
   return (

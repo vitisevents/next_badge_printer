@@ -156,6 +156,58 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
   )
 
   const handlePrint = () => {
+    // Inject page size CSS for printing
+    const styleId = 'print-page-size'
+    let styleElement = document.getElementById(styleId) as HTMLStyleElement
+    
+    if (!styleElement) {
+      styleElement = document.createElement('style')
+      styleElement.id = styleId
+      document.head.appendChild(styleElement)
+    }
+    
+    // Set the @page rule to match template size including bleed
+    if (selectedTemplate) {
+      const bleed = selectedTemplate.bleed || 0
+      const paperWidth = selectedTemplate.pageSize.width + (bleed * 2)
+      const paperHeight = selectedTemplate.pageSize.height + (bleed * 2)
+      
+      styleElement.textContent = `
+        @page {
+          size: ${paperWidth}mm ${paperHeight}mm;
+          margin: 0;
+        }
+        @media print {
+          html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .badge-grid {
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          .badge {
+            width: ${paperWidth}mm !important;
+            height: ${paperHeight}mm !important;
+            page-break-after: always !important;
+            page-break-inside: avoid !important;
+            break-after: always !important;
+            break-inside: avoid !important;
+            margin: -1px 0 0 -1px !important;
+            padding: 0 !important;
+            border: none !important;
+            box-sizing: border-box !important;
+            display: block !important;
+            position: relative !important;
+          }
+          .badge:last-child {
+            page-break-after: auto !important;
+            break-after: auto !important;
+          }
+        }
+      `
+    }
+    
     window.print()
   }
 

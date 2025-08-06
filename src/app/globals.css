@@ -7,24 +7,6 @@
     display: none !important;
   }
   
-  body {
-    margin: 0;
-    padding: 0;
-    background: white;
-  }
-  
-  .badge {
-    page-break-after: always;
-    page-break-inside: avoid;
-    margin: 0 !important;
-    box-shadow: none !important;
-    /* Size will be set by template inline styles */
-  }
-  
-  .badge:last-child {
-    page-break-after: auto;
-  }
-  
   /* Ensure colors and backgrounds print properly */
   * {
     -webkit-print-color-adjust: exact !important;
@@ -32,13 +14,8 @@
     print-color-adjust: exact !important;
   }
   
-  /* Override any responsive classes for print */
-  .print\:break-after-always {
-    page-break-after: always !important;
-  }
-  
-  .print\:break-inside-avoid {
-    page-break-inside: avoid !important;
+  .badge-grid {
+    display: block !important;
   }
 }
 
