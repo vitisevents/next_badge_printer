@@ -44,9 +44,13 @@
 
 /* Badge grid layout */
 .badge-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 16px;
+}
+
+.badge-grid > * {
+  flex: 0 0 auto;
 }
 
 @media print {
