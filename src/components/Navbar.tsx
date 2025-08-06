@@ -5,9 +5,10 @@ import { useState } from 'react'
 interface NavbarProps {
   activeTab: 'templates' | 'events' | 'badges' | 'blank-badges'
   onTabChange: (tab: 'templates' | 'events' | 'badges' | 'blank-badges') => void
+  onLogout?: () => void
 }
 
-export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
+export default function Navbar({ activeTab, onTabChange, onLogout }: NavbarProps) {
   const tabs = [
     { id: 'templates', name: 'Templates', icon: '🎨' },
     { id: 'events', name: 'Events', icon: '📅' },
@@ -40,10 +41,18 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
               ))}
             </div>
           </div>
-          <div className="flex items-center">
+          <div className="flex items-center space-x-4">
             <span className="text-sm text-gray-500">
               Professional Badge Printing
             </span>
+            {onLogout && (
+              <button
+                onClick={onLogout}
+                className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1 rounded-md border border-gray-300 hover:border-gray-400 transition-colors"
+              >
+                Sign Out
+              </button>
+            )}
           </div>
         </div>
       </div>
