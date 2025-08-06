@@ -64,6 +64,17 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
       const data = await response.json()
       setTickets(data)
       
+      // Extract unique ticket types and select all by default
+      const uniqueTicketTypes = new Set<string>()
+      data.forEach((ticket: any) => {
+        if (ticket.ticket_type_id) {
+          uniqueTicketTypes.add(ticket.ticket_type_id)
+        }
+      })
+      
+      // Select all ticket types by default
+      setSelectedTicketTypes(uniqueTicketTypes)
+      
       // Extract available fields from tickets
       const fieldsSet = new Set<string>()
       data.forEach((ticket: any) => {
