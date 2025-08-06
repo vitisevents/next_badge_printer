@@ -12,7 +12,8 @@ export interface Template {
   name: string
   description?: string
   pageSize: PageSize
-  backgroundImage?: string // Blob URL
+  backgroundImage?: string // Blob URL (JPG/PNG/PDF)
+  backgroundImageType?: 'image' | 'pdf' // Type of background
   backgroundColor?: string
   bleed: number // mm
   createdAt: string
@@ -26,14 +27,22 @@ export interface CustomField {
   required: boolean
 }
 
+export interface FontStyle {
+  fontFamily: string
+  fontSize: number // px
+  fontWeight: string // '400', '500', '600', '700', etc.
+  color: string // hex color
+  textAlign?: 'left' | 'center' | 'right'
+  lineHeight?: number
+}
+
 export interface BadgeField {
   id: string
   label: string
   source: 'attendee' | 'event' | 'ticket' | 'custom'
   field: string
   visible: boolean
-  fontSize?: string
-  fontWeight?: string
+  fontStyle: FontStyle
   position?: {
     x: number
     y: number

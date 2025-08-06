@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import type { Event, TicketType } from '@/types/tickettailor'
-import type { EventConfiguration, CustomField } from '@/types/config'
+import type { EventConfiguration, CustomField, BadgeField } from '@/types/config'
+import BadgeFieldConfig from './BadgeFieldConfig'
 
 export default function EventManager() {
   const [events, setEvents] = useState<Event[]>([])
@@ -212,7 +213,8 @@ export default function EventManager() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Event Selection */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Event</h2>
@@ -279,37 +281,27 @@ export default function EventManager() {
             )}
           </div>
         )}
+        </div>
 
-        {/* Available Fields */}
+        {/* Badge Field Configuration */}
         {selectedEvent && (
           <div className="bg-white border border-gray-200 rounded-lg p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Available Fields
-            </h2>
-            
-            <div className="space-y-3">
-              <div className="text-sm text-gray-600 mb-3">
-                Fields available from TicketTailor data:
-              </div>
-              
-              {customFields.map((field) => (
-                <div key={field.key} className="flex items-center justify-between">
-                  <div>
-                    <div className="font-medium text-gray-900">{field.label}</div>
-                    <div className="text-xs text-gray-500">{field.key}</div>
-                  </div>
-                  <span className="text-xs bg-gray-100 px-2 py-1 rounded">
-                    {field.type}
-                  </span>
-                </div>
-              ))}
-              
-              <div className="pt-3 border-t border-gray-200">
-                <div className="text-xs text-gray-500">
-                  Additional custom fields will be extracted from your TicketTailor custom questions automatically.
-                </div>
-              </div>
-            </div>
+            <BadgeFieldConfig
+              fields={eventConfig?.badgeFields || []}
+              availableFields={customFields.map(f => f.key)}
+              onFieldsChange={(fields) => {
+                if (!selectedEvent) return
+                const newConfig: EventConfiguration = {
+                  eventId: selectedEvent.id,
+                  eventName: selectedEvent.name,
+                  ticketTypeColors: eventConfig?.ticketTypeColors || {},
+                  customFields: eventConfig?.customFields || customFields,
+                  badgeFields: fields,
+                  updatedAt: new Date().toISOString()
+                }
+                setEventConfig(newConfig)
+              }}
+            />
           </div>
         )}
       </div>

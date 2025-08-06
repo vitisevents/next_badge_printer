@@ -1,10 +1,13 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import type { TicketType } from '@/types/tickettailor'
-import type { Template } from '@/types/config'
+import type { Template, BadgeField } from '@/types/config'
+import { getFontStack, loadGoogleFont } from '@/lib/googleFonts'
+import { convertPDFToImage } from '@/lib/pdfUtils'
 
 interface BadgeData {
-  fields: Array<{ label: string; value: string }>
+  fields: Array<{ label: string; value: string; fieldConfig?: BadgeField }>
   ticketType: TicketType
   eventName: string
 }
@@ -12,10 +15,40 @@ interface BadgeData {
 interface EnhancedBadgeComponentProps {
   badgeData: BadgeData
   template: Template
+  fieldConfigurations?: BadgeField[]
 }
 
-export default function EnhancedBadgeComponent({ badgeData, template }: EnhancedBadgeComponentProps) {
+export default function EnhancedBadgeComponent({ badgeData, template, fieldConfigurations }: EnhancedBadgeComponentProps) {
   const { fields, ticketType, eventName } = badgeData
+  const [backgroundImage, setBackgroundImage] = useState<string | undefined>(template.backgroundImage)
+  
+  // Handle PDF background conversion
+  useEffect(() => {
+    if (template.backgroundImage && template.backgroundImageType === 'pdf') {
+      convertPDFToImage(template.backgroundImage)
+        .then(imageUrl => setBackgroundImage(imageUrl))
+        .catch(err => console.error('Error converting PDF background:', err))
+    } else {
+      setBackgroundImage(template.backgroundImage)
+    }
+  }, [template.backgroundImage, template.backgroundImageType])
+
+  // Load fonts for all field configurations
+  useEffect(() => {
+    if (fieldConfigurations) {
+      fieldConfigurations.forEach(config => {
+        loadGoogleFont(config.fontStyle.fontFamily, [config.fontStyle.fontWeight, '400', '700'])
+      })
+    }
+  }, [fieldConfigurations])
+
+  // Find field configuration by field key
+  const getFieldConfig = (field: { label: string; value: string }) => {
+    return fieldConfigurations?.find(config => 
+      config.field === field.label.toLowerCase().replace(/\s+/g, '_') ||
+      config.label === field.label
+    )
+  }
   
   // Find the main name field (usually holder_name)
   const nameField = fields.find(f => f.label.toLowerCase().includes('name') || f.label.toLowerCase() === 'holder name')
@@ -25,7 +58,7 @@ export default function EnhancedBadgeComponent({ badgeData, template }: Enhanced
     width: template.pageSize.cssWidth,
     height: template.pageSize.cssHeight,
     backgroundColor: template.backgroundColor || '#ffffff',
-    backgroundImage: template.backgroundImage ? `url(${template.backgroundImage})` : undefined,
+    backgroundImage: backgroundImage ? `url(${backgroundImage})` : undefined,
     backgroundSize: 'cover',
     backgroundPosition: 'center',
     border: '1px solid #000',
@@ -53,21 +86,50 @@ export default function EnhancedBadgeComponent({ badgeData, template }: Enhanced
           {/* Main name - largest text */}
           {nameField && (
             <div className="text-center mb-4">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight">
-                {nameField.value}
-              </h1>
+              {(() => {
+                const config = getFieldConfig(nameField)
+                const style = config ? {
+                  fontFamily: getFontStack(config.fontStyle.fontFamily),
+                  fontSize: `${config.fontStyle.fontSize}px`,
+                  fontWeight: config.fontStyle.fontWeight,
+                  color: config.fontStyle.color,
+                  textAlign: config.fontStyle.textAlign || 'center',
+                  lineHeight: config.fontStyle.lineHeight || 1.2
+                } : {}
+                
+                return (
+                  <h1 
+                    className="leading-tight"
+                    style={config ? style : { fontSize: '24px', fontWeight: '700', color: '#111827' }}
+                  >
+                    {nameField.value}
+                  </h1>
+                )
+              })()}
             </div>
           )}
 
           {/* Additional fields */}
           {otherFields.length > 0 && (
-            <div className="text-center space-y-1 text-sm text-gray-700">
-              {otherFields.slice(0, 3).map((field, index) => (
-                <div key={index}>
-                  <span className="font-medium">{field.label}:</span>{' '}
-                  <span>{field.value}</span>
-                </div>
-              ))}
+            <div className="text-center space-y-2">
+              {otherFields.slice(0, 3).map((field, index) => {
+                const config = getFieldConfig(field)
+                const style = config ? {
+                  fontFamily: getFontStack(config.fontStyle.fontFamily),
+                  fontSize: `${config.fontStyle.fontSize}px`,
+                  fontWeight: config.fontStyle.fontWeight,
+                  color: config.fontStyle.color,
+                  textAlign: config.fontStyle.textAlign || 'center',
+                  lineHeight: config.fontStyle.lineHeight || 1.4
+                } : { fontSize: '14px', color: '#374151' }
+
+                return (
+                  <div key={index} style={style}>
+                    <span className="font-medium">{field.label}:</span>{' '}
+                    <span>{field.value}</span>
+                  </div>
+                )
+              })}
             </div>
           )}
         </div>
