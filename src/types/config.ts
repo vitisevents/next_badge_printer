@@ -12,8 +12,7 @@ export interface Template {
   name: string
   description?: string
   pageSize: PageSize
-  backgroundImage?: string // Blob URL (JPG/PNG/PDF)
-  backgroundImageType?: 'image' | 'pdf' // Type of background
+  backgroundImage?: string // Blob URL (JPG/PNG/WebP/SVG)
   backgroundColor?: string
   bleed: number // mm
   createdAt: string

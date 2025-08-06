@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import type { TicketType } from '@/types/tickettailor'
 import type { Template, BadgeField } from '@/types/config'
 import { getFontStack, loadGoogleFont } from '@/lib/googleFonts'
-import { convertPDFToImage } from '@/lib/pdfUtils'
 
 interface BadgeData {
   fields: Array<{ label: string; value: string; fieldConfig?: BadgeField }>
@@ -22,16 +21,10 @@ export default function EnhancedBadgeComponent({ badgeData, template, fieldConfi
   const { fields, ticketType, eventName } = badgeData
   const [backgroundImage, setBackgroundImage] = useState<string | undefined>(template.backgroundImage)
   
-  // Handle PDF background conversion
+  // Set background image
   useEffect(() => {
-    if (template.backgroundImage && template.backgroundImageType === 'pdf') {
-      convertPDFToImage(template.backgroundImage)
-        .then(imageUrl => setBackgroundImage(imageUrl))
-        .catch(err => console.error('Error converting PDF background:', err))
-    } else {
-      setBackgroundImage(template.backgroundImage)
-    }
-  }, [template.backgroundImage, template.backgroundImageType])
+    setBackgroundImage(template.backgroundImage)
+  }, [template.backgroundImage])
 
   // Load fonts for all field configurations
   useEffect(() => {

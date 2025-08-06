@@ -7,7 +7,10 @@
       "Bash(npm run dev:*)",
       "Bash(npm run build:*)",
       "WebFetch(domain:developers.tickettailor.com)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(git add:*)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }

@@ -3,7 +3,6 @@
 import { useState, useRef } from 'react'
 import type { Template } from '@/types/config'
 import { ISO_PAGE_SIZES } from '@/lib/pageSizes'
-import { isPDFFile, convertPDFToImage } from '@/lib/pdfUtils'
 
 interface TemplateEditorProps {
   template: Template | null
@@ -25,7 +24,6 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
   
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(formData.backgroundImage || null)
-  const [isPdfBackground, setIsPdfBackground] = useState<boolean>(formData.backgroundImageType === 'pdf')
   const [saving, setSaving] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -46,47 +44,34 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
   const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      const isPdf = isPDFFile(file)
       const isImage = file.type.startsWith('image/')
       
-      if (!isPdf && !isImage) {
-        alert('Please select a valid image file (JPG, PNG) or PDF file')
+      if (!isImage) {
+        alert('Please select a valid image file (JPG, PNG, WebP, or SVG)')
+        return
+      }
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert('File size must be less than 10MB')
         return
       }
 
       setSelectedImage(file)
-      setIsPdfBackground(isPdf)
-      handleInputChange('backgroundImageType', isPdf ? 'pdf' : 'image')
       
-      if (isPdf) {
-        try {
-          // Create temporary URL for PDF
-          const pdfUrl = URL.createObjectURL(file)
-          // Convert first page to image for preview
-          const imageDataUrl = await convertPDFToImage(pdfUrl)
-          setImagePreview(imageDataUrl)
-          URL.revokeObjectURL(pdfUrl)
-        } catch (error) {
-          console.error('Error processing PDF:', error)
-          alert('Error processing PDF file')
-        }
-      } else {
-        // Create preview for image
-        const reader = new FileReader()
-        reader.onload = (e) => {
-          setImagePreview(e.target?.result as string)
-        }
-        reader.readAsDataURL(file)
+      // Create preview for image
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setImagePreview(e.target?.result as string)
       }
+      reader.readAsDataURL(file)
     }
   }
 
   const handleRemoveImage = () => {
     setSelectedImage(null)
     setImagePreview(null)
-    setIsPdfBackground(false)
     handleInputChange('backgroundImage', undefined)
-    handleInputChange('backgroundImageType', undefined)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -234,13 +219,17 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
                   <input
                     ref={fileInputRef}
                     type="file"
-                    accept="image/jpeg,image/jpg,image/png,application/pdf"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/svg+xml"
                     onChange={handleImageUpload}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="text-xs text-gray-500">
-                    Upload JPG, PNG, or PDF file. Images and PDFs will scale to fit using cover mode.
+                    Upload JPG, PNG, WebP, or SVG file. Images will scale to fit using cover mode. For best results, use high-resolution images.
                   </p>
+                  <div className="text-xs bg-blue-50 border border-blue-200 rounded p-2 mt-2">
+                    <strong>💡 Tip:</strong> To use PDF designs, convert them to high-resolution PNG or JPG images first. 
+                    Many PDF converters and design tools can export to image formats.
+                  </div>
                   {imagePreview && (
                     <div className="relative inline-block">
                       <img
@@ -248,11 +237,6 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
                         alt="Background preview"
                         className="w-32 h-24 object-cover rounded border"
                       />
-                      {isPdfBackground && (
-                        <div className="absolute bottom-0 left-0 bg-blue-600 text-white text-xs px-1 py-0.5 rounded-tr">
-                          PDF
-                        </div>
-                      )}
                       <button
                         onClick={handleRemoveImage}
                         className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
