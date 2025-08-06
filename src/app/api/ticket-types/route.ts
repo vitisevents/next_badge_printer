@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
     let pageCount = 0
     
     while (hasMore) {
-      const url = lastOrderId 
+      const url: string = lastOrderId 
         ? `${API_BASE}/orders?limit=100&starting_after=${lastOrderId}`
         : `${API_BASE}/orders?limit=100`
         

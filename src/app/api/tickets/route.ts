@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
     
     while (hasMore) {
       // TicketTailor uses cursor-based pagination with 'starting_after'
-      const url = lastOrderId 
+      const url: string = lastOrderId 
         ? `${API_BASE}/orders?limit=100&starting_after=${lastOrderId}`
         : `${API_BASE}/orders?limit=100`
       
@@ -183,7 +183,7 @@ export async function GET(request: NextRequest) {
       totalOrders: orders.length,
       totalTickets: tickets.length,
       eventId,
-      uniqueTicketTypes: [...new Set(tickets.map(t => t.ticket_type_id))],
+      uniqueTicketTypes: Array.from(new Set(tickets.map((t: any) => t.ticket_type_id))),
       sampleTickets: tickets.slice(0, 3)
     })
     

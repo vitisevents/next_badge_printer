@@ -85,7 +85,7 @@ export default function BlankBadgeGenerator({ onBack }: BlankBadgeGeneratorProps
   const generateBlankBadges = () => {
     if (!selectedEvent || !selectedTemplate) return []
 
-    const badges = []
+    const badges: any[] = []
     
     ticketTypes.forEach(ticketType => {
       const quantity = quantities[ticketType.id] || 0
