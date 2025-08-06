@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import type { Event, TicketType, Ticket } from '@/types/tickettailor'
 import type { Template, EventConfiguration, BadgeField } from '@/types/config'
 import EnhancedBadgeComponent from './EnhancedBadgeComponent'
+import { generateBadgesPDF } from '@/lib/pdfGenerator'
 
 interface EnhancedBadgeGeneratorProps {
   event: Event
@@ -21,6 +22,7 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
   const [availableFields, setAvailableFields] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [sortAlphabetically, setSortAlphabetically] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -151,64 +153,57 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
     return ticket[field] || ''
   }
 
-  const filteredTickets = tickets.filter(ticket => 
-    selectedTicketTypes.has(ticket.ticket_type_id)
-  )
-
-  const handlePrint = () => {
-    // Inject page size CSS for printing
-    const styleId = 'print-page-size'
-    let styleElement = document.getElementById(styleId) as HTMLStyleElement
-    
-    if (!styleElement) {
-      styleElement = document.createElement('style')
-      styleElement.id = styleId
-      document.head.appendChild(styleElement)
-    }
-    
-    // Set the @page rule to match template size including bleed
-    if (selectedTemplate) {
-      const bleed = selectedTemplate.bleed || 0
-      const paperWidth = selectedTemplate.pageSize.width + (bleed * 2)
-      const paperHeight = selectedTemplate.pageSize.height + (bleed * 2)
+  const filteredTickets = tickets
+    .filter(ticket => selectedTicketTypes.has(ticket.ticket_type_id))
+    .sort((a, b) => {
+      if (!sortAlphabetically) return 0
       
-      styleElement.textContent = `
-        @page {
-          size: ${paperWidth}mm ${paperHeight}mm;
-          margin: 0;
-        }
-        @media print {
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          .badge-grid {
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          .badge {
-            width: ${paperWidth}mm !important;
-            height: ${paperHeight}mm !important;
-            page-break-after: always !important;
-            page-break-inside: avoid !important;
-            break-after: always !important;
-            break-inside: avoid !important;
-            margin: -1px 0 0 -1px !important;
-            padding: 0 !important;
-            border: none !important;
-            box-sizing: border-box !important;
-            display: block !important;
-            position: relative !important;
-          }
-          .badge:last-child {
-            page-break-after: auto !important;
-            break-after: auto !important;
-          }
-        }
-      `
+      // Sort by holder name alphabetically
+      const nameA = (a.holder_name || '').toLowerCase().trim()
+      const nameB = (b.holder_name || '').toLowerCase().trim()
+      
+      return nameA.localeCompare(nameB)
+    })
+
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  
+  const handleGeneratePDF = async () => {
+    if (!selectedTemplate || filteredTickets.length === 0) {
+      alert('Please select a template and ensure you have badges to generate')
+      return
     }
     
-    window.print()
+    try {
+      setIsGeneratingPDF(true)
+      
+      // Get all badge elements
+      const badgeElements = document.querySelectorAll('.badge') as NodeListOf<HTMLElement>
+      
+      if (badgeElements.length === 0) {
+        alert('No badge elements found to generate PDF')
+        return
+      }
+      
+      // Prepare badge data for PDF generation
+      const badgeData = Array.from(badgeElements).map(element => ({
+        element,
+        template: selectedTemplate
+      }))
+      
+      // Generate filename with event name and date
+      const eventName = event.name.replace(/[^a-zA-Z0-9]/g, '_')
+      const date = new Date().toISOString().split('T')[0]
+      const filename = `${eventName}_badges_${date}.pdf`
+      
+      // Generate PDF
+      await generateBadgesPDF(badgeData, filename)
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      alert('Failed to generate PDF. Please try again.')
+    } finally {
+      setIsGeneratingPDF(false)
+    }
   }
 
   if (loading) {
@@ -337,16 +332,30 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
           {/* Badge Count & Print */}
           <div>
             <h3 className="text-lg font-medium text-gray-900 mb-3">Print</h3>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="text-sm text-gray-600">
                 {filteredTickets.length} badge(s) ready
               </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="sort-alphabetically"
+                  checked={sortAlphabetically}
+                  onChange={(e) => setSortAlphabetically(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="sort-alphabetically" className="text-sm text-gray-700">
+                  Sort A-Z by name
+                </label>
+              </div>
+              
               <button
-                onClick={handlePrint}
-                disabled={filteredTickets.length === 0 || !selectedTemplate}
+                onClick={handleGeneratePDF}
+                disabled={filteredTickets.length === 0 || !selectedTemplate || isGeneratingPDF}
                 className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Print Badges
+                {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}
               </button>
             </div>
           </div>

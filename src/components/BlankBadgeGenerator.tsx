@@ -5,6 +5,7 @@ import type { Event, TicketType } from '@/types/tickettailor'
 import type { Template, EventConfiguration } from '@/types/config'
 import EventSelector from './EventSelector'
 import EnhancedBadgeComponent from './EnhancedBadgeComponent'
+import { generateBadgesPDF } from '@/lib/pdfGenerator'
 
 interface BlankBadgeGeneratorProps {
   onBack?: () => void
@@ -19,6 +20,7 @@ export default function BlankBadgeGenerator({ onBack }: BlankBadgeGeneratorProps
   const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sortAlphabetically, setSortAlphabetically] = useState(false)
 
   useEffect(() => {
     fetchTemplates()
@@ -87,7 +89,16 @@ export default function BlankBadgeGenerator({ onBack }: BlankBadgeGeneratorProps
 
     const badges: any[] = []
     
-    ticketTypes.forEach(ticketType => {
+    // Get sorted ticket types if alphabetical sort is enabled
+    const sortedTicketTypes = sortAlphabetically
+      ? [...ticketTypes].sort((a, b) => {
+          const nameA = (eventConfig?.ticketTypeNames?.[a.id] || a.name).toLowerCase()
+          const nameB = (eventConfig?.ticketTypeNames?.[b.id] || b.name).toLowerCase()
+          return nameA.localeCompare(nameB)
+        })
+      : ticketTypes
+    
+    sortedTicketTypes.forEach(ticketType => {
       const quantity = quantities[ticketType.id] || 0
       const customName = eventConfig?.ticketTypeNames?.[ticketType.id] || ticketType.name
       const customColor = eventConfig?.ticketTypeColors?.[ticketType.id] || ticketType.colour
@@ -113,65 +124,50 @@ export default function BlankBadgeGenerator({ onBack }: BlankBadgeGeneratorProps
     return badges
   }
 
-  const handlePrint = () => {
+  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  
+  const handleGeneratePDF = async () => {
     if (getTotalQuantity() === 0) {
       alert('Please set quantities for at least one ticket type')
       return
     }
     
-    // Inject page size CSS for printing
-    const styleId = 'print-page-size'
-    let styleElement = document.getElementById(styleId) as HTMLStyleElement
-    
-    if (!styleElement) {
-      styleElement = document.createElement('style')
-      styleElement.id = styleId
-      document.head.appendChild(styleElement)
+    if (!selectedTemplate) {
+      alert('Please select a template')
+      return
     }
     
-    // Set the @page rule to match template size including bleed
-    if (selectedTemplate) {
-      const bleed = selectedTemplate.bleed || 0
-      const paperWidth = selectedTemplate.pageSize.width + (bleed * 2)
-      const paperHeight = selectedTemplate.pageSize.height + (bleed * 2)
+    try {
+      setIsGeneratingPDF(true)
       
-      styleElement.textContent = `
-        @page {
-          size: ${paperWidth}mm ${paperHeight}mm;
-          margin: 0;
-        }
-        @media print {
-          html, body {
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          .badge-grid {
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          .badge {
-            width: ${paperWidth}mm !important;
-            height: ${paperHeight}mm !important;
-            page-break-after: always !important;
-            page-break-inside: avoid !important;
-            break-after: always !important;
-            break-inside: avoid !important;
-            margin: -1px 0 0 -1px !important;
-            padding: 0 !important;
-            border: none !important;
-            box-sizing: border-box !important;
-            display: block !important;
-            position: relative !important;
-          }
-          .badge:last-child {
-            page-break-after: auto !important;
-            break-after: auto !important;
-          }
-        }
-      `
+      // Get all badge elements
+      const badgeElements = document.querySelectorAll('.badge') as NodeListOf<HTMLElement>
+      
+      if (badgeElements.length === 0) {
+        alert('No badge elements found to generate PDF')
+        return
+      }
+      
+      // Prepare badge data for PDF generation
+      const badgeData = Array.from(badgeElements).map(element => ({
+        element,
+        template: selectedTemplate
+      }))
+      
+      // Generate filename with event name and date
+      const eventName = selectedEvent?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'blank_badges'
+      const date = new Date().toISOString().split('T')[0]
+      const filename = `${eventName}_blank_badges_${date}.pdf`
+      
+      // Generate PDF
+      await generateBadgesPDF(badgeData, filename)
+      
+    } catch (error) {
+      console.error('Error generating PDF:', error)
+      alert('Failed to generate PDF. Please try again.')
+    } finally {
+      setIsGeneratingPDF(false)
     }
-    
-    window.print()
   }
 
   const blankBadges = generateBlankBadges()
@@ -264,16 +260,30 @@ export default function BlankBadgeGenerator({ onBack }: BlankBadgeGeneratorProps
           {/* Print */}
           <div>
             <h3 className="text-lg font-medium text-gray-900 mb-3">Print</h3>
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="text-sm text-gray-600">
                 Total: {getTotalQuantity()} blank badge(s)
               </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="sort-alphabetically-blank"
+                  checked={sortAlphabetically}
+                  onChange={(e) => setSortAlphabetically(e.target.checked)}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="sort-alphabetically-blank" className="text-sm text-gray-700">
+                  Sort A-Z by ticket type
+                </label>
+              </div>
+              
               <button
-                onClick={handlePrint}
-                disabled={!selectedTemplate || getTotalQuantity() === 0}
+                onClick={handleGeneratePDF}
+                disabled={!selectedTemplate || getTotalQuantity() === 0 || isGeneratingPDF}
                 className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Print Blank Badges
+                {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}
               </button>
             </div>
           </div>
