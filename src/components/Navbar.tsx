@@ -3,8 +3,8 @@
 import { useState } from 'react'
 
 interface NavbarProps {
-  activeTab: 'templates' | 'events' | 'badges'
-  onTabChange: (tab: 'templates' | 'events' | 'badges') => void
+  activeTab: 'templates' | 'events' | 'badges' | 'blank-badges'
+  onTabChange: (tab: 'templates' | 'events' | 'badges' | 'blank-badges') => void
 }
 
 export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
@@ -12,6 +12,7 @@ export default function Navbar({ activeTab, onTabChange }: NavbarProps) {
     { id: 'templates', name: 'Templates', icon: '🎨' },
     { id: 'events', name: 'Events', icon: '📅' },
     { id: 'badges', name: 'Badge Generation', icon: '🏷️' },
+    { id: 'blank-badges', name: 'Blank Badges', icon: '📄' },
   ] as const
 
   return (

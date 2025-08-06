@@ -6,9 +6,10 @@ import TemplateManager from '@/components/TemplateManager'
 import EventManager from '@/components/EventManager'
 import EventSelector from '@/components/EventSelector'
 import EnhancedBadgeGenerator from '@/components/EnhancedBadgeGenerator'
+import BlankBadgeGenerator from '@/components/BlankBadgeGenerator'
 import type { Event, TicketType } from '@/types/tickettailor'
 
-type ActiveTab = 'templates' | 'events' | 'badges'
+type ActiveTab = 'templates' | 'events' | 'badges' | 'blank-badges'
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('badges')
@@ -49,6 +50,9 @@ export default function Home() {
             </div>
           )
         }
+
+      case 'blank-badges':
+        return <BlankBadgeGenerator />
       
       default:
         return <div>Page not found</div>
