@@ -292,14 +292,7 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
 
       {/* Badge Preview/Print Area */}
       {selectedTemplate && (
-        <div style={{ 
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          '@media print': {
-            display: 'block'
-          }
-        }}>
+        <div className="badge-grid">
           {filteredTickets.map((ticket, index) => {
             const ticketType = ticketTypes.find(t => t.id === ticket.ticket_type_id)
             const color = eventConfig?.ticketTypeColors?.[ticket.ticket_type_id] || ticketType?.colour || '#3B82F6'

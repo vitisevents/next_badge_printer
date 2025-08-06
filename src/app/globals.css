@@ -41,3 +41,16 @@
     page-break-inside: avoid !important;
   }
 }
+
+/* Badge grid layout */
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+@media print {
+  .badge-grid {
+    display: block;
+  }
+}
