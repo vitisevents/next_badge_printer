@@ -157,6 +157,26 @@ export default function EventManager() {
         ...(eventConfig?.ticketTypeColors || {}),
         [ticketTypeId]: color
       },
+      ticketTypeNames: eventConfig?.ticketTypeNames || {},
+      customFields: eventConfig?.customFields || customFields,
+      badgeFields: eventConfig?.badgeFields || [],
+      updatedAt: new Date().toISOString()
+    }
+
+    setEventConfig(newConfig)
+  }
+
+  const handleNameChange = (ticketTypeId: string, customName: string) => {
+    if (!selectedEvent) return
+
+    const newConfig: EventConfiguration = {
+      eventId: selectedEvent.id,
+      eventName: selectedEvent.name,
+      ticketTypeColors: eventConfig?.ticketTypeColors || {},
+      ticketTypeNames: {
+        ...(eventConfig?.ticketTypeNames || {}),
+        [ticketTypeId]: customName
+      },
       customFields: eventConfig?.customFields || customFields,
       badgeFields: eventConfig?.badgeFields || [],
       updatedAt: new Date().toISOString()
@@ -243,37 +263,63 @@ export default function EventManager() {
           )}
         </div>
 
-        {/* Ticket Type Colors */}
+        {/* Ticket Type Configuration */}
         {selectedEvent && (
           <div className="bg-white border border-gray-200 rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">
-              Ticket Type Colors
+              Ticket Type Configuration
             </h2>
             
             {ticketTypes.length === 0 ? (
               <p className="text-gray-500">No ticket types found for this event.</p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {ticketTypes.map((ticketType) => (
-                  <div key={ticketType.id} className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900">{ticketType.name}</div>
-                      <div className="text-sm text-gray-500">{ticketType.description}</div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="color"
-                        value={eventConfig?.ticketTypeColors?.[ticketType.id] || ticketType.colour}
-                        onChange={(e) => handleColorChange(ticketType.id, e.target.value)}
-                        className="w-10 h-8 border border-gray-300 rounded cursor-pointer"
-                      />
-                      <input
-                        type="text"
-                        value={eventConfig?.ticketTypeColors?.[ticketType.id] || ticketType.colour}
-                        onChange={(e) => handleColorChange(ticketType.id, e.target.value)}
-                        className="w-20 px-2 py-1 text-xs border border-gray-300 rounded"
-                        placeholder="#000000"
-                      />
+                  <div key={ticketType.id} className="border border-gray-200 rounded-lg p-4">
+                    <div className="space-y-4">
+                      <div>
+                        <div className="font-medium text-gray-900 mb-1">{ticketType.name}</div>
+                        <div className="text-sm text-gray-500">{ticketType.description}</div>
+                      </div>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Badge Display Name
+                          </label>
+                          <input
+                            type="text"
+                            placeholder={ticketType.name}
+                            value={eventConfig?.ticketTypeNames?.[ticketType.id] || ''}
+                            onChange={(e) => handleNameChange(ticketType.id, e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">
+                            Override the name shown on badges (leave empty to use original name)
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Badge Color
+                          </label>
+                          <div className="flex items-center space-x-2">
+                            <input
+                              type="color"
+                              value={eventConfig?.ticketTypeColors?.[ticketType.id] || ticketType.colour}
+                              onChange={(e) => handleColorChange(ticketType.id, e.target.value)}
+                              className="w-10 h-8 border border-gray-300 rounded cursor-pointer"
+                            />
+                            <input
+                              type="text"
+                              value={eventConfig?.ticketTypeColors?.[ticketType.id] || ticketType.colour}
+                              onChange={(e) => handleColorChange(ticketType.id, e.target.value)}
+                              className="flex-1 px-2 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="#000000"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -295,6 +341,7 @@ export default function EventManager() {
                   eventId: selectedEvent.id,
                   eventName: selectedEvent.name,
                   ticketTypeColors: eventConfig?.ticketTypeColors || {},
+                  ticketTypeNames: eventConfig?.ticketTypeNames || {},
                   customFields: eventConfig?.customFields || customFields,
                   badgeFields: fields,
                   updatedAt: new Date().toISOString()

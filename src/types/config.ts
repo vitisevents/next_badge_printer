@@ -52,6 +52,7 @@ export interface EventConfiguration {
   eventId: string
   eventName: string
   ticketTypeColors: Record<string, string>
+  ticketTypeNames: Record<string, string> // Override display names for ticket types
   customFields: CustomField[]
   badgeFields: BadgeField[]
   updatedAt: string
