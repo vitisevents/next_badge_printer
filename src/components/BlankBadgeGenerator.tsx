@@ -5,7 +5,9 @@ import type { Event, TicketType } from '@/types/tickettailor'
 import type { Template, EventConfiguration } from '@/types/config'
 import EventSelector from './EventSelector'
 import EnhancedBadgeComponent from './EnhancedBadgeComponent'
+import FlippableBadge from './FlippableBadge'
 import { generateBadgesPDF } from '@/lib/pdfGenerator'
+import '../styles/badge-flip.css'
 
 interface BlankBadgeGeneratorProps {
   onBack?: () => void
@@ -125,6 +127,7 @@ export default function BlankBadgeGenerator({ onBack }: BlankBadgeGeneratorProps
   }
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [pdfProgress, setPdfProgress] = useState({ current: 0, total: 0, percentage: 0 })
   
   const handleGeneratePDF = async () => {
     if (getTotalQuantity() === 0) {
@@ -139,34 +142,52 @@ export default function BlankBadgeGenerator({ onBack }: BlankBadgeGeneratorProps
     
     try {
       setIsGeneratingPDF(true)
+      setPdfProgress({ current: 0, total: 0, percentage: 0 })
       
-      // Get all badge elements
-      const badgeElements = document.querySelectorAll('.badge') as NodeListOf<HTMLElement>
+      // Get all badge front elements
+      const badgeFronts = document.querySelectorAll('.badge-front .badge') as NodeListOf<HTMLElement>
+      // Get all badge back elements  
+      const badgeBacks = document.querySelectorAll('.badge-back .badge') as NodeListOf<HTMLElement>
       
-      if (badgeElements.length === 0) {
+      if (badgeFronts.length === 0) {
         alert('No badge elements found to generate PDF')
         return
       }
       
-      // Prepare badge data for PDF generation
-      const badgeData = Array.from(badgeElements).map(element => ({
-        element,
-        template: selectedTemplate
-      }))
+      // Prepare badge data - interleave fronts and backs for double-sided printing
+      const badgeData: Array<{element: HTMLElement, template: Template}> = []
+      
+      for (let i = 0; i < badgeFronts.length; i++) {
+        // Add front
+        badgeData.push({
+          element: badgeFronts[i],
+          template: selectedTemplate
+        })
+        // Add back
+        if (badgeBacks[i]) {
+          badgeData.push({
+            element: badgeBacks[i],
+            template: selectedTemplate
+          })
+        }
+      }
       
       // Generate filename with event name and date
       const eventName = selectedEvent?.name?.replace(/[^a-zA-Z0-9]/g, '_') || 'blank_badges'
       const date = new Date().toISOString().split('T')[0]
-      const filename = `${eventName}_blank_badges_${date}.pdf`
+      const filename = `${eventName}_blank_badges_double_sided_${date}.pdf`
       
-      // Generate PDF
-      await generateBadgesPDF(badgeData, filename)
+      // Generate PDF with progress tracking
+      await generateBadgesPDF(badgeData, filename, (percentage, current, total) => {
+        setPdfProgress({ current, total, percentage })
+      })
       
     } catch (error) {
       console.error('Error generating PDF:', error)
       alert('Failed to generate PDF. Please try again.')
     } finally {
       setIsGeneratingPDF(false)
+      setPdfProgress({ current: 0, total: 0, percentage: 0 })
     }
   }
 
@@ -283,7 +304,11 @@ export default function BlankBadgeGenerator({ onBack }: BlankBadgeGeneratorProps
                 disabled={!selectedTemplate || getTotalQuantity() === 0 || isGeneratingPDF}
                 className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}
+                {isGeneratingPDF ? (
+                  pdfProgress.total > 0 ? 
+                    `Generating PDF... ${pdfProgress.percentage}% (${pdfProgress.current}/${pdfProgress.total})` 
+                    : 'Generating PDF...'
+                ) : 'Download PDF'}
               </button>
             </div>
           </div>
@@ -294,11 +319,28 @@ export default function BlankBadgeGenerator({ onBack }: BlankBadgeGeneratorProps
       {selectedTemplate && blankBadges.length > 0 && (
         <div className="badge-grid">
           {blankBadges.map((badge) => (
-            <EnhancedBadgeComponent
+            <FlippableBadge
               key={badge.key}
-              badgeData={badge.badgeData}
+              frontContent={
+                <EnhancedBadgeComponent
+                  badgeData={badge.badgeData}
+                  template={selectedTemplate}
+                  fieldConfigurations={eventConfig?.badgeFields}
+                  isBack={false}
+                />
+              }
+              backContent={
+                <EnhancedBadgeComponent
+                  badgeData={badge.badgeData}
+                  template={selectedTemplate}
+                  fieldConfigurations={eventConfig?.badgeFields}
+                  isBack={true}
+                />
+              }
               template={selectedTemplate}
-              fieldConfigurations={eventConfig?.badgeFields}
+              eventName={selectedEvent?.name || ''}
+              ticketTypeName={badge.badgeData.ticketType.name}
+              ticketTypeColor={badge.badgeData.ticketType.colour}
             />
           ))}
         </div>

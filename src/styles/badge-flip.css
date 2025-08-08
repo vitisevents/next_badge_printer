@@ -1,0 +1,69 @@
+/* Badge flip animation styles */
+.badge-flip-container {
+  perspective: 1000px;
+  width: 100%;
+  height: 100%;
+}
+
+.badge-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.6s;
+  transform-style: preserve-3d;
+}
+
+.badge-flip-container:hover .badge-flip-inner {
+  transform: rotateY(180deg);
+}
+
+.badge-front,
+.badge-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.badge-front {
+  z-index: 2;
+  transform: rotateY(0deg);
+}
+
+.badge-back {
+  transform: rotateY(180deg);
+}
+
+/* Badge back design */
+.badge-back-content {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.badge-back-logo {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.badge-back-text {
+  font-size: 18px;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.badge-back-subtext {
+  font-size: 14px;
+  opacity: 0.9;
+  text-align: center;
+}

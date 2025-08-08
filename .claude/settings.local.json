@@ -10,8 +10,20 @@
       "Bash(npm install:*)",
       "Bash(git add:*)",
       "Bash(git reset:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(pkill:*)",
+      "Bash(# Convert to base64 with proper syntax\nbase64 -i /tmp/template_bg.png -o /tmp/template_bg.b64\n\n# Check the size of base64\nwc -c /tmp/template_bg.b64\n\n# Create a data URL (show first 200 chars)\necho -n \"\"data:image/png;base64,\"\" > /tmp/template_dataurl.txt\ncat /tmp/template_bg.b64 >> /tmp/template_dataurl.txt\nhead -c 200 /tmp/template_dataurl.txt)",
+      "mcp__supabase__apply_migration",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql",
+      "Bash(curl:*)",
+      "Bash(node:*)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

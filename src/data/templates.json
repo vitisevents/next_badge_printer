@@ -1,0 +1,29 @@
+[
+  {
+    "id": "template_1754509562824",
+    "name": "Investor Summit 2025",
+    "description": "Badge template with custom background",
+    "pageSize": {
+      "id": "t180_badge",
+      "name": "T180 Badge (96mm x 134mm)",
+      "width": 96,
+      "height": 134,
+      "cssWidth": "96mm",
+      "cssHeight": "134mm"
+    },
+    "backgroundColor": "#ffffff",
+    "backgroundImage": "https://r6m0dwyqoaamm8ul.public.blob.vercel-storage.com/templates/images/template_1754509562824.png",
+    "bleed": 0,
+    "nameColor": "#ffffff",
+    "nameFontSize": 32,
+    "showEventName": false,
+    "qrCode": {
+      "showOnFront": false,
+      "showOnBack": true,
+      "position": { "x": 82, "y": 82 },
+      "size": 24
+    },
+    "createdAt": "2025-08-06T19:46:02.824Z",
+    "updatedAt": "2025-08-07T11:30:28.207Z"
+  }
+]

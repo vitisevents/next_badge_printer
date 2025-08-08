@@ -7,6 +7,16 @@ export interface PageSize {
   cssHeight: string
 }
 
+export interface QRCodeSettings {
+  showOnFront: boolean
+  showOnBack: boolean
+  position: {
+    x: number // percentage (0-100)
+    y: number // percentage (0-100)
+  }
+  size: number // mm
+}
+
 export interface Template {
   id: string
   name: string
@@ -15,6 +25,10 @@ export interface Template {
   backgroundImage?: string // Blob URL (JPG/PNG/WebP/SVG)
   backgroundColor?: string
   bleed: number // mm
+  showEventName?: boolean // Show event name on badge (default: true)
+  nameColor?: string // Font color for the main name (default: #111827)
+  nameFontSize?: number // Font size for the main name in px (default: 24)
+  qrCode?: QRCodeSettings
   createdAt: string
   updatedAt: string
 }

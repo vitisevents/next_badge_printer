@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import type { Event, TicketType, Ticket } from '@/types/tickettailor'
-import type { Template, EventConfiguration, BadgeField } from '@/types/config'
+import type { Template, EventConfiguration, BadgeField, PageSize } from '@/types/config'
 import EnhancedBadgeComponent from './EnhancedBadgeComponent'
-import { generateBadgesPDF } from '@/lib/pdfGenerator'
+import FlippableBadge from './FlippableBadge'
+import { generateBadgesPDF } from '@/lib/simplePdfGenerator'
+import clientLogger from '@/lib/clientLogger'
+import '../styles/badge-flip.css'
 
 interface EnhancedBadgeGeneratorProps {
   event: Event
@@ -22,7 +25,9 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
   const [availableFields, setAvailableFields] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [sortAlphabetically, setSortAlphabetically] = useState(false)
+  const [sortBy, setSortBy] = useState<'purchase_date' | 'first_name' | 'last_name' | 'first_name_by_type' | 'last_name_by_type'>('purchase_date')
+  const [dateFrom, setDateFrom] = useState<string>('')
+  const [dateTo, setDateTo] = useState<string>('')
 
   useEffect(() => {
     Promise.all([
@@ -39,18 +44,56 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
   }, [ticketTypes])
 
   const fetchTemplates = async () => {
-    try {
-      const response = await fetch('/api/templates')
-      if (response.ok) {
-        const data = await response.json()
-        setTemplates(data)
-        if (data.length > 0 && !selectedTemplate) {
-          setSelectedTemplate(data[0])
+          try {
+        clientLogger.log('TEMPLATES', 'Fetching templates...')
+        const response = await fetch('/api/templates')
+        clientLogger.log('TEMPLATES', `Response status: ${response.status}`)
+        
+        if (response.ok) {
+          const data = await response.json()
+          
+          clientLogger.log('TEMPLATES', { apiResponse: data })
+          
+          if (data && data.length > 0) {
+            clientLogger.log('TEMPLATES', { loaded: data.length, templates: data })
+            setTemplates(data)
+            if (data.length > 0 && !selectedTemplate) {
+              setSelectedTemplate(data[0])
+              clientLogger.log('TEMPLATES', { selectedTemplate: data[0] })
+            }
+          } else {
+            clientLogger.log('TEMPLATES', 'No templates found, creating default template')
+          // Create a default template for development
+          const defaultTemplate: Template = {
+            id: 'default',
+            name: 'Default Template',
+            description: 'Default template for local development',
+            pageSize: {
+              id: 'a7',
+              name: 'A7',
+              width: 74,
+              height: 105,
+              cssWidth: '74mm',
+              cssHeight: '105mm'
+            },
+            backgroundColor: '#ffffff',
+            bleed: 3,
+            nameColor: '#111827',
+            nameFontSize: 24,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+                      setTemplates([defaultTemplate])
+            setSelectedTemplate(defaultTemplate)
+            clientLogger.log('TEMPLATES', { createdDefaultTemplate: defaultTemplate })
+          }
+        } else {
+          const errorText = await response.text()
+          clientLogger.error('TEMPLATES', { status: response.status, error: errorText })
         }
+      } catch (err) {
+        clientLogger.error('TEMPLATES', err)
       }
-    } catch (err) {
-      console.error('Error fetching templates:', err)
-    }
   }
 
   const fetchTickets = async () => {
@@ -58,12 +101,32 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
       setLoading(true)
       setError(null)
       
-      const response = await fetch(`/api/tickets?event_id=${event.id}`)
-      if (!response.ok) {
-        throw new Error('Failed to fetch tickets')
+      let url = `/api/tickets?event_id=${event.id}`
+      if (dateFrom) {
+        url += `&date_from=${dateFrom}`
+      }
+      if (dateTo) {
+        url += `&date_to=${dateTo}`
       }
       
-      const data = await response.json()
+              clientLogger.log('TICKETS', { url })
+        const response = await fetch(url)
+        if (!response.ok) {
+          throw new Error('Failed to fetch tickets')
+        }
+        
+        const data = await response.json()
+        clientLogger.log('TICKETS', {
+          count: data.length,
+          sampleTicket: data[0] ? {
+            id: data[0].id,
+            holder_name: data[0].holder_name,
+            holder_email: data[0].holder_email,
+            ticket_type_id: data[0].ticket_type_id,
+            custom_fields: data[0].custom_fields
+          } : null
+        })
+      
       setTickets(data)
       
       // Extract unique ticket types and select all by default
@@ -97,24 +160,24 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
       
       setAvailableFields(Array.from(fieldsSet).sort())
       
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch tickets')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const fetchEventConfig = async () => {
-    try {
-      const response = await fetch(`/api/event-config?eventId=${event.id}`)
-      if (response.ok) {
-        const config = await response.json()
-        setEventConfig(config)
+          } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch tickets')
+      } finally {
+        setLoading(false)
       }
-    } catch (err) {
-      console.error('Error fetching event config:', err)
     }
-  }
+
+    const fetchEventConfig = async () => {
+      try {
+        const response = await fetch(`/api/event-config?eventId=${event.id}`)
+        if (response.ok) {
+          const config = await response.json()
+          setEventConfig(config)
+        }
+      } catch (err) {
+        clientLogger.error('EVENT_CONFIG', err)
+      }
+    }
 
   const handleTicketTypeToggle = (typeId: string) => {
     const newSelected = new Set(selectedTicketTypes)
@@ -156,16 +219,56 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
   const filteredTickets = tickets
     .filter(ticket => selectedTicketTypes.has(ticket.ticket_type_id))
     .sort((a, b) => {
-      if (!sortAlphabetically) return 0
+      if (sortBy === 'purchase_date') {
+        // Default order from API (purchase date)
+        return 0
+      }
       
-      // Sort by holder name alphabetically
       const nameA = (a.holder_name || '').toLowerCase().trim()
       const nameB = (b.holder_name || '').toLowerCase().trim()
       
-      return nameA.localeCompare(nameB)
+      if (sortBy === 'first_name') {
+        // Sort by first name
+        const firstA = nameA.split(' ')[0] || ''
+        const firstB = nameB.split(' ')[0] || ''
+        return firstA.localeCompare(firstB)
+      } else if (sortBy === 'last_name') {
+        // Sort by last name
+        const lastA = nameA.split(' ').slice(-1)[0] || ''
+        const lastB = nameB.split(' ').slice(-1)[0] || ''
+        return lastA.localeCompare(lastB)
+      } else if (sortBy === 'first_name_by_type' || sortBy === 'last_name_by_type') {
+        // Get the display names (override names if available)
+        const ticketTypeA = ticketTypes.find(t => t.id === a.ticket_type_id)
+        const ticketTypeB = ticketTypes.find(t => t.id === b.ticket_type_id)
+        const overrideNameA = eventConfig?.ticketTypeNames?.[a.ticket_type_id]
+        const overrideNameB = eventConfig?.ticketTypeNames?.[b.ticket_type_id]
+        
+        const displayNameA = overrideNameA || ticketTypeA?.name || 'General Admission'
+        const displayNameB = overrideNameB || ticketTypeB?.name || 'General Admission'
+        
+        // First sort by display name (override name if available)
+        if (displayNameA !== displayNameB) {
+          return displayNameA.localeCompare(displayNameB)
+        }
+        
+        // Then sort by name within the same display type
+        if (sortBy === 'first_name_by_type') {
+          const firstA = nameA.split(' ')[0] || ''
+          const firstB = nameB.split(' ')[0] || ''
+          return firstA.localeCompare(firstB)
+        } else {
+          const lastA = nameA.split(' ').slice(-1)[0] || ''
+          const lastB = nameB.split(' ').slice(-1)[0] || ''
+          return lastA.localeCompare(lastB)
+        }
+      }
+      
+      return 0
     })
 
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
+  const [pdfProgress, setPdfProgress] = useState({ current: 0, total: 0, percentage: 0 })
   
   const handleGeneratePDF = async () => {
     if (!selectedTemplate || filteredTickets.length === 0) {
@@ -175,34 +278,56 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
     
     try {
       setIsGeneratingPDF(true)
+      setPdfProgress({ current: 0, total: 0, percentage: 0 })
+      
+      // Wait a moment for badges to render
+      await new Promise(resolve => setTimeout(resolve, 500))
       
       // Get all badge elements
-      const badgeElements = document.querySelectorAll('.badge') as NodeListOf<HTMLElement>
+      const badgeFronts = document.querySelectorAll('.badge-front .badge') as NodeListOf<HTMLElement>
+      const badgeBacks = document.querySelectorAll('.badge-back .badge') as NodeListOf<HTMLElement>
       
-      if (badgeElements.length === 0) {
+      console.log(`Found ${badgeFronts.length} front badges and ${badgeBacks.length} back badges`)
+      
+      if (badgeFronts.length === 0) {
         alert('No badge elements found to generate PDF')
         return
       }
       
-      // Prepare badge data for PDF generation
-      const badgeData = Array.from(badgeElements).map(element => ({
-        element,
-        template: selectedTemplate
-      }))
+      // Prepare badge data for double-sided printing
+      const badgeData: Array<{element: HTMLElement, template: Template}> = []
       
-      // Generate filename with event name and date
+      for (let i = 0; i < badgeFronts.length; i++) {
+        // Add front
+        badgeData.push({
+          element: badgeFronts[i],
+          template: selectedTemplate
+        })
+        // Add back if exists
+        if (badgeBacks[i]) {
+          badgeData.push({
+            element: badgeBacks[i],
+            template: selectedTemplate
+          })
+        }
+      }
+      
+      // Generate filename
       const eventName = event.name.replace(/[^a-zA-Z0-9]/g, '_')
       const date = new Date().toISOString().split('T')[0]
-      const filename = `${eventName}_badges_${date}.pdf`
+      const filename = `${eventName}_badges_double_sided_${date}.pdf`
       
       // Generate PDF
-      await generateBadgesPDF(badgeData, filename)
+      await generateBadgesPDF(badgeData, filename, (percentage, current, total) => {
+        setPdfProgress({ current, total, percentage })
+      })
       
     } catch (error) {
-      console.error('Error generating PDF:', error)
+      console.error('PDF generation failed:', error)
       alert('Failed to generate PDF. Please try again.')
     } finally {
       setIsGeneratingPDF(false)
+      setPdfProgress({ current: 0, total: 0, percentage: 0 })
     }
   }
 
@@ -256,6 +381,58 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
           >
             Back to Events
           </button>
+        </div>
+
+        {/* Date Range Filter */}
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+          <h3 className="text-lg font-medium text-gray-900 mb-3">Date Range Filter</h3>
+          <div className="grid md:grid-cols-3 gap-4">
+            <div>
+              <label htmlFor="date-from" className="block text-sm font-medium text-gray-700 mb-1">
+                From Date
+              </label>
+              <input
+                type="date"
+                id="date-from"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label htmlFor="date-to" className="block text-sm font-medium text-gray-700 mb-1">
+                To Date
+              </label>
+              <input
+                type="date"
+                id="date-to"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="flex items-end space-x-2">
+              <button
+                onClick={() => {
+                  setDateFrom('')
+                  setDateTo('')
+                  fetchTickets()
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              >
+                Clear Dates
+              </button>
+              <button
+                onClick={fetchTickets}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+              >
+                Apply Filter
+              </button>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Leave empty to show all tickets. Date range filters orders by purchase date.
+          </p>
         </div>
 
         <div className="grid md:grid-cols-4 gap-6 mb-6">
@@ -337,17 +514,65 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
                 {filteredTickets.length} badge(s) ready
               </div>
               
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="sort-alphabetically"
-                  checked={sortAlphabetically}
-                  onChange={(e) => setSortAlphabetically(e.target.checked)}
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                />
-                <label htmlFor="sort-alphabetically" className="text-sm text-gray-700">
-                  Sort A-Z by name
-                </label>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-gray-700">Order by:</label>
+                <div className="space-y-1">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name="sortBy"
+                      value="purchase_date"
+                      checked={sortBy === 'purchase_date'}
+                      onChange={(e) => setSortBy('purchase_date')}
+                      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Purchase date</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name="sortBy"
+                      value="first_name"
+                      checked={sortBy === 'first_name'}
+                      onChange={(e) => setSortBy('first_name')}
+                      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">First name</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name="sortBy"
+                      value="last_name"
+                      checked={sortBy === 'last_name'}
+                      onChange={(e) => setSortBy('last_name')}
+                      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Last name</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name="sortBy"
+                      value="first_name_by_type"
+                      checked={sortBy === 'first_name_by_type'}
+                      onChange={(e) => setSortBy('first_name_by_type')}
+                      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">First name (by type)</span>
+                  </label>
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      name="sortBy"
+                      value="last_name_by_type"
+                      checked={sortBy === 'last_name_by_type'}
+                      onChange={(e) => setSortBy('last_name_by_type')}
+                      className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700">Last name (by type)</span>
+                  </label>
+                </div>
               </div>
               
               <button
@@ -355,7 +580,11 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
                 disabled={filteredTickets.length === 0 || !selectedTemplate || isGeneratingPDF}
                 className="w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}
+                {isGeneratingPDF ? (
+                  pdfProgress.total > 0 ? 
+                    `Generating PDF... ${pdfProgress.percentage}% (${pdfProgress.current}/${pdfProgress.total})` 
+                    : 'Generating PDF...'
+                ) : 'Download PDF'}
               </button>
             </div>
           </div>
@@ -368,6 +597,7 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
           {filteredTickets.map((ticket, index) => {
             const ticketType = ticketTypes.find(t => t.id === ticket.ticket_type_id)
             const color = eventConfig?.ticketTypeColors?.[ticket.ticket_type_id] || ticketType?.colour || '#3B82F6'
+            const overrideName = eventConfig?.ticketTypeNames?.[ticket.ticket_type_id]
             
             const badgeData = {
               fields: Array.from(selectedFields).map(field => ({
@@ -376,16 +606,49 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
               })),
               ticketType: {
                 ...ticketType,
+                name: overrideName || ticketType?.name || 'General Admission',
                 colour: color
               } as TicketType,
-              eventName: event.name
+              eventName: event.name,
+              rawTicket: ticket // Pass the raw ticket data for QR code email lookup
+            }
+
+            // Only log first few badges to avoid spam
+            if (index < 3) {
+              clientLogger.log('BADGE_DATA', {
+                badgeIndex: index,
+                ticketId: ticket.id,
+                badgeData,
+                selectedFields: Array.from(selectedFields),
+                fieldValues: Array.from(selectedFields).map(field => ({
+                  field,
+                  label: getFieldLabel(field),
+                  value: getFieldValue(ticket, field)
+                }))
+              })
             }
 
             return (
-              <EnhancedBadgeComponent
+              <FlippableBadge
                 key={`${ticket.id}-${index}`}
-                badgeData={badgeData}
+                frontContent={
+                  <EnhancedBadgeComponent
+                    badgeData={badgeData}
+                    template={selectedTemplate}
+                    isBack={false}
+                  />
+                }
+                backContent={
+                  <EnhancedBadgeComponent
+                    badgeData={badgeData}
+                    template={selectedTemplate}
+                    isBack={true}
+                  />
+                }
                 template={selectedTemplate}
+                eventName={event.name}
+                ticketTypeName={overrideName || ticketType?.name || 'General Admission'}
+                ticketTypeColor={color}
               />
             )
           })}

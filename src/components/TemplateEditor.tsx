@@ -11,15 +11,28 @@ interface TemplateEditorProps {
 }
 
 export default function TemplateEditor({ template, onSave, onCancel }: TemplateEditorProps) {
-  const [formData, setFormData] = useState<Template>(template || {
-    id: `template_${Date.now()}`,
-    name: 'New Template',
-    description: '',
-    pageSize: ISO_PAGE_SIZES[0],
-    backgroundColor: '#ffffff',
-    bleed: 3,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+  const [formData, setFormData] = useState<Template>(() => {
+    if (template) {
+      // Ensure existing templates have nameColor and nameFontSize for backward compatibility
+      return {
+        ...template,
+        nameColor: template.nameColor || '#111827',
+        nameFontSize: template.nameFontSize || 24
+      }
+    }
+    
+    return {
+      id: `template_${Date.now()}`,
+      name: 'New Template',
+      description: '',
+      pageSize: ISO_PAGE_SIZES[0],
+      backgroundColor: '#ffffff',
+      bleed: 3,
+      nameColor: '#111827',
+      nameFontSize: 24,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
   })
   
   const [selectedImage, setSelectedImage] = useState<File | null>(null)
@@ -204,6 +217,63 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
                   Extra space around the edge for printing bleed
                 </p>
               </div>
+
+              <div>
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.showEventName !== false}
+                    onChange={(e) => handleInputChange('showEventName', e.target.checked)}
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Show event name on badge</span>
+                </label>
+                <p className="mt-1 text-xs text-gray-500 ml-6">
+                  Display the event name at the top of each badge
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name Font Color
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="color"
+                    value={formData.nameColor || '#111827'}
+                    onChange={(e) => handleInputChange('nameColor', e.target.value)}
+                    className="w-12 h-10 border border-gray-300 rounded cursor-pointer"
+                  />
+                  <input
+                    type="text"
+                    value={formData.nameColor || '#111827'}
+                    onChange={(e) => handleInputChange('nameColor', e.target.value)}
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="#111827"
+                  />
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  Color for the main name text on badges
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Name Font Size (px)
+                </label>
+                <input
+                  type="number"
+                  value={formData.nameFontSize || 24}
+                  onChange={(e) => handleInputChange('nameFontSize', parseFloat(e.target.value) || 24)}
+                  min="12"
+                  max="48"
+                  step="1"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  Font size for the main name text (12-48px)
+                </p>
+              </div>
             </div>
           </div>
 
@@ -273,6 +343,123 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
               </div>
             </div>
           </div>
+
+          {/* QR Code Settings */}
+          <div className="bg-white border border-gray-200 rounded-lg p-6 mt-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">VCard QR Code</h2>
+            
+            <div className="space-y-4">
+              <div className="flex space-x-4">
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.qrCode?.showOnFront || false}
+                    onChange={(e) => handleInputChange('qrCode', {
+                      ...formData.qrCode,
+                      showOnFront: e.target.checked,
+                      showOnBack: formData.qrCode?.showOnBack || false,
+                      position: formData.qrCode?.position || { x: 50, y: 50 },
+                      size: formData.qrCode?.size || 20
+                    })}
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Show on Front</span>
+                </label>
+                
+                <label className="flex items-center space-x-2">
+                  <input
+                    type="checkbox"
+                    checked={formData.qrCode?.showOnBack || false}
+                    onChange={(e) => handleInputChange('qrCode', {
+                      ...formData.qrCode,
+                      showOnFront: formData.qrCode?.showOnFront || false,
+                      showOnBack: e.target.checked,
+                      position: formData.qrCode?.position || { x: 50, y: 50 },
+                      size: formData.qrCode?.size || 20
+                    })}
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Show on Back</span>
+                </label>
+              </div>
+              
+              {(formData.qrCode?.showOnFront || formData.qrCode?.showOnBack) && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      QR Code Size (mm)
+                    </label>
+                    <input
+                      type="number"
+                      value={formData.qrCode?.size || 20}
+                      onChange={(e) => handleInputChange('qrCode', {
+                        ...formData.qrCode,
+                        size: parseFloat(e.target.value) || 20
+                      })}
+                      min="10"
+                      max="50"
+                      step="1"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Horizontal Position (%)
+                      </label>
+                      <input
+                        type="range"
+                        value={formData.qrCode?.position?.x || 50}
+                        onChange={(e) => handleInputChange('qrCode', {
+                          ...formData.qrCode,
+                          position: {
+                            ...formData.qrCode?.position,
+                            x: parseFloat(e.target.value),
+                            y: formData.qrCode?.position?.y || 50
+                          }
+                        })}
+                        min="0"
+                        max="100"
+                        className="w-full"
+                      />
+                      <div className="text-center text-xs text-gray-500 mt-1">
+                        {formData.qrCode?.position?.x || 50}%
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Vertical Position (%)
+                      </label>
+                      <input
+                        type="range"
+                        value={formData.qrCode?.position?.y || 50}
+                        onChange={(e) => handleInputChange('qrCode', {
+                          ...formData.qrCode,
+                          position: {
+                            ...formData.qrCode?.position,
+                            x: formData.qrCode?.position?.x || 50,
+                            y: parseFloat(e.target.value)
+                          }
+                        })}
+                        min="0"
+                        max="100"
+                        className="w-full"
+                      />
+                      <div className="text-center text-xs text-gray-500 mt-1">
+                        {formData.qrCode?.position?.y || 50}%
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-gray-500">
+                    The QR code will contain VCard data (name, email, job title, company) when available
+                  </p>
+                </>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Preview Panel */}
@@ -305,7 +492,32 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
                   />
                 )}
                 
+                {/* QR Code Preview */}
+                {(formData.qrCode?.showOnFront || formData.qrCode?.showOnBack) && (
+                  <div
+                    className="absolute bg-white border-2 border-gray-400 rounded flex items-center justify-center"
+                    style={{
+                      width: `${(formData.qrCode?.size || 20) * 2}px`,
+                      height: `${(formData.qrCode?.size || 20) * 2}px`,
+                      left: `${(formData.qrCode?.position?.x || 50)}%`,
+                      top: `${(formData.qrCode?.position?.y || 50)}%`,
+                      transform: 'translate(-50%, -50%)'
+                    }}
+                  >
+                    <div className="text-xs text-gray-500">QR</div>
+                  </div>
+                )}
+                
                 <div className="text-center p-4">
+                  <div 
+                    className="font-bold mb-2 leading-tight"
+                    style={{ 
+                      color: formData.nameColor || '#111827',
+                      fontSize: `${(formData.nameFontSize || 24) / 2}px` // Scale down for preview
+                    }}
+                  >
+                    Christopher Alexander-Smith Jr.
+                  </div>
                   <div className="bg-black bg-opacity-50 text-white px-3 py-1 rounded text-sm">
                     Sample Badge Content
                   </div>

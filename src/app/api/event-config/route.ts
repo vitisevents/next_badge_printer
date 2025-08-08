@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { put, list, del } from '@vercel/blob'
+import { supabase, supabaseAdmin } from '@/lib/supabase'
 import type { EventConfiguration } from '@/types/config'
 
 export async function GET(request: NextRequest) {
@@ -9,35 +9,57 @@ export async function GET(request: NextRequest) {
     
     if (eventId) {
       // Get specific event configuration
-      try {
-        const { blobs } = await list({ prefix: `events/config/${eventId}.json` })
-        if (blobs.length > 0) {
-          const response = await fetch(blobs[0].url)
-          const config = await response.json()
-          return NextResponse.json(config)
-        } else {
-          return NextResponse.json(null)
-        }
-      } catch (error) {
+      const { data: config, error } = await supabase
+        .from('event_configurations')
+        .select('*')
+        .eq('event_id', eventId)
+        .single()
+      
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
+        console.error('Error fetching event config:', error)
+        return NextResponse.json({ error: 'Failed to fetch event configuration' }, { status: 500 })
+      }
+      
+      if (!config) {
         return NextResponse.json(null)
       }
-    } else {
-      // List all event configurations
-      const { blobs } = await list({ prefix: 'events/config/' })
       
-      const configs: EventConfiguration[] = []
-      
-      for (const blob of blobs) {
-        try {
-          const response = await fetch(blob.url)
-          const config = await response.json()
-          configs.push(config)
-        } catch (error) {
-          console.error('Error fetching event config:', blob.pathname, error)
-        }
+      // Transform database format to frontend format
+      const eventConfig: EventConfiguration = {
+        eventId: config.event_id,
+        eventName: config.event_name || '',
+        ticketTypeColors: config.ticket_type_colors || {},
+        ticketTypeNames: config.ticket_type_names || {},
+        customFields: config.custom_fields || [],
+        badgeFields: config.badge_fields || [],
+        updatedAt: config.updated_at
       }
       
-      return NextResponse.json(configs)
+      return NextResponse.json(eventConfig)
+    } else {
+      // List all event configurations
+      const { data: configs, error } = await supabase
+        .from('event_configurations')
+        .select('*')
+        .order('updated_at', { ascending: false })
+      
+      if (error) {
+        console.error('Error fetching event configurations:', error)
+        return NextResponse.json({ error: 'Failed to fetch event configurations' }, { status: 500 })
+      }
+      
+      // Transform to frontend format
+      const eventConfigs: EventConfiguration[] = configs.map(config => ({
+        eventId: config.event_id,
+        eventName: config.event_name || '',
+        ticketTypeColors: config.ticket_type_colors || {},
+        ticketTypeNames: config.ticket_type_names || {},
+        customFields: config.custom_fields || [],
+        badgeFields: config.badge_fields || [],
+        updatedAt: config.updated_at
+      }))
+      
+      return NextResponse.json(eventConfigs)
     }
   } catch (error) {
     console.error('Error fetching event configurations:', error)
@@ -49,29 +71,40 @@ export async function POST(request: NextRequest) {
   try {
     const config: EventConfiguration = await request.json()
     
-    const configWithTimestamp = {
-      ...config,
-      updatedAt: new Date().toISOString()
+    // Upsert (insert or update) the configuration
+    const { data, error } = await supabaseAdmin
+      .from('event_configurations')
+      .upsert({
+        event_id: config.eventId,
+        event_name: config.eventName || '',
+        ticket_type_colors: config.ticketTypeColors || {},
+        ticket_type_names: config.ticketTypeNames || {},
+        custom_fields: config.customFields || [],
+        badge_fields: config.badgeFields || [],
+        updated_at: new Date().toISOString()
+      }, {
+        onConflict: 'event_id'
+      })
+      .select()
+      .single()
+    
+    if (error) {
+      console.error('Error saving event configuration:', error)
+      return NextResponse.json({ error: 'Failed to save event configuration' }, { status: 500 })
     }
     
-    // Delete existing config if it exists, then create new one
-    try {
-      await del([`events/config/${config.eventId}.json`])
-    } catch (deleteError) {
-      console.warn('Could not delete existing event config:', deleteError)
+    // Transform back to frontend format
+    const savedConfig: EventConfiguration = {
+      eventId: data.event_id,
+      eventName: data.event_name || '',
+      ticketTypeColors: data.ticket_type_colors || {},
+      ticketTypeNames: data.ticket_type_names || {},
+      customFields: data.custom_fields || [],
+      badgeFields: data.badge_fields || [],
+      updatedAt: data.updated_at
     }
     
-    // Save event configuration to blob storage
-    const configBlob = await put(
-      `events/config/${config.eventId}.json`,
-      JSON.stringify(configWithTimestamp),
-      {
-        access: 'public',
-        contentType: 'application/json',
-      }
-    )
-    
-    return NextResponse.json(configWithTimestamp)
+    return NextResponse.json(savedConfig)
   } catch (error) {
     console.error('Error saving event configuration:', error)
     return NextResponse.json({ error: 'Failed to save event configuration' }, { status: 500 })
@@ -87,8 +120,16 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Event ID is required' }, { status: 400 })
     }
     
-    // Delete event configuration
-    await del([`events/config/${eventId}.json`])
+    // Delete event configuration from database
+    const { error } = await supabaseAdmin
+      .from('event_configurations')
+      .delete()
+      .eq('event_id', eventId)
+    
+    if (error) {
+      console.error('Error deleting event configuration:', error)
+      return NextResponse.json({ error: 'Failed to delete event configuration' }, { status: 500 })
+    }
     
     return NextResponse.json({ success: true })
   } catch (error) {

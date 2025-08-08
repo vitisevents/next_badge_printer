@@ -32,6 +32,14 @@ export const ISO_PAGE_SIZES: PageSize[] = [
     height: 108,
     cssWidth: '89mm',
     cssHeight: '108mm'
+  },
+  {
+    id: 't180_badge',
+    name: 'T180 Badge (96mm x 134mm)',
+    width: 96,
+    height: 134,
+    cssWidth: '96mm',
+    cssHeight: '134mm'
   }
 ]
 

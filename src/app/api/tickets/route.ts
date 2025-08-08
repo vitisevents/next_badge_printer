@@ -13,9 +13,25 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url)
     const eventId = searchParams.get('event_id')
+    const dateFrom = searchParams.get('date_from') // ISO date string (YYYY-MM-DD)
+    const dateTo = searchParams.get('date_to') // ISO date string (YYYY-MM-DD)
     
     if (!eventId) {
       return NextResponse.json({ error: 'event_id is required' }, { status: 400 })
+    }
+    
+    // Convert date strings to Unix timestamps if provided
+    let dateParams = ''
+    if (dateFrom) {
+      const fromTimestamp = Math.floor(new Date(dateFrom).getTime() / 1000)
+      dateParams += `&created_at_gte=${fromTimestamp}`
+    }
+    if (dateTo) {
+      // Add 23:59:59 to the end date to include the whole day
+      const toDate = new Date(dateTo)
+      toDate.setHours(23, 59, 59, 999)
+      const toTimestamp = Math.floor(toDate.getTime() / 1000)
+      dateParams += `&created_at_lte=${toTimestamp}`
     }
 
     // Create debug log
@@ -23,7 +39,10 @@ export async function GET(request: NextRequest) {
     debugLog.push({
       timestamp: new Date().toISOString(),
       message: 'Starting ticket fetch',
-      eventId
+      eventId,
+      dateFrom,
+      dateTo,
+      dateParams
     })
 
     // Use a Set to track unique order IDs and prevent duplicates
@@ -36,8 +55,8 @@ export async function GET(request: NextRequest) {
     while (hasMore) {
       // TicketTailor uses cursor-based pagination with 'starting_after'
       const url: string = lastOrderId 
-        ? `${API_BASE}/orders?limit=100&starting_after=${lastOrderId}`
-        : `${API_BASE}/orders?limit=100`
+        ? `${API_BASE}/orders?limit=100&starting_after=${lastOrderId}${dateParams}`
+        : `${API_BASE}/orders?limit=100${dateParams}`
       
       const response = await fetch(url, {
         headers: {
