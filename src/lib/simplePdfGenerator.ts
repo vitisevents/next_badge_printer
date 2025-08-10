@@ -66,24 +66,21 @@ export async function generateBadgesPDF(
         await new Promise(resolve => setTimeout(resolve, 50))
       }
       
-      // Temporarily remove any transforms that might cause text reversal
-      const originalTransforms: string[] = []
-      const elementsWithTransform = element.querySelectorAll('*')
+      // Check if this element is inside a badge-back container
+      const backContainer = element.closest('.badge-back')
+      let temporaryStyle: HTMLStyleElement | null = null
       
-      elementsWithTransform.forEach((el, index) => {
-        const htmlEl = el as HTMLElement
-        const computedStyle = window.getComputedStyle(htmlEl)
-        const transform = computedStyle.transform
-        
-        if (transform && transform !== 'none') {
-          originalTransforms[index] = htmlEl.style.transform || ''
-          htmlEl.style.transform = 'none'
-        }
-      })
-      
-      // Also remove transform from the main element
-      const mainElementTransform = element.style.transform || ''
-      element.style.transform = 'none'
+      if (backContainer) {
+        // Inject temporary CSS to override the rotateY transform
+        temporaryStyle = document.createElement('style')
+        temporaryStyle.innerHTML = `
+          .badge-back {
+            transform: none !important;
+          }
+        `
+        document.head.appendChild(temporaryStyle)
+        console.log(`Badge ${i + 1}: Temporarily overrode .badge-back transform`)
+      }
       
       // Convert element to canvas with higher quality settings
       const canvas = await html2canvas(element, {
@@ -100,14 +97,11 @@ export async function generateBadgesPDF(
         removeContainer: false  // Keep original container structure
       })
       
-      // Restore original transforms
-      elementsWithTransform.forEach((el, index) => {
-        const htmlEl = el as HTMLElement
-        if (originalTransforms[index] !== undefined) {
-          htmlEl.style.transform = originalTransforms[index]
-        }
-      })
-      element.style.transform = mainElementTransform
+      // Remove temporary style override
+      if (temporaryStyle) {
+        document.head.removeChild(temporaryStyle)
+        console.log(`Badge ${i + 1}: Removed temporary style override`)
+      }
       
       console.log(`Badge ${i + 1}: Canvas created ${canvas.width}x${canvas.height}`)
       
