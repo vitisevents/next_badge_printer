@@ -44,6 +44,12 @@ export async function generateBadgesPDF(
       
       console.log(`Processing badge ${i + 1}/${badges.length}`)
       
+      // Debug: Check the actual text content before rendering
+      const nameElements = element.querySelectorAll('h1')
+      if (nameElements.length > 0) {
+        console.log(`Badge ${i + 1}: Name in DOM = "${nameElements[0].textContent}"`)
+      }
+      
       // Validate element exists and has dimensions
       if (!element) {
         console.error(`Badge ${i + 1}: Element is null or undefined`)
@@ -60,21 +66,55 @@ export async function generateBadgesPDF(
         await new Promise(resolve => setTimeout(resolve, 50))
       }
       
-      // Convert element to canvas with minimal settings
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,  // Changed to true to allow cross-origin images
-        allowTaint: false,  // Changed to false to prevent tainted canvas
-        backgroundColor: '#ffffff',
-        logging: false
+      // Temporarily remove any transforms that might cause text reversal
+      const originalTransforms: string[] = []
+      const elementsWithTransform = element.querySelectorAll('*')
+      
+      elementsWithTransform.forEach((el, index) => {
+        const htmlEl = el as HTMLElement
+        const computedStyle = window.getComputedStyle(htmlEl)
+        const transform = computedStyle.transform
+        
+        if (transform && transform !== 'none') {
+          originalTransforms[index] = htmlEl.style.transform || ''
+          htmlEl.style.transform = 'none'
+        }
       })
+      
+      // Also remove transform from the main element
+      const mainElementTransform = element.style.transform || ''
+      element.style.transform = 'none'
+      
+      // Convert element to canvas with higher quality settings
+      const canvas = await html2canvas(element, {
+        scale: 4,  // High resolution (300+ DPI)
+        useCORS: true,  // Allow cross-origin images
+        allowTaint: false,  // Prevent tainted canvas
+        backgroundColor: '#ffffff',
+        logging: false,
+        imageTimeout: 15000,  // Give more time for images to load
+        windowWidth: element.scrollWidth,
+        windowHeight: element.scrollHeight,
+        // Better handling of SVG images
+        foreignObjectRendering: false,  // Don't use foreignObject for SVG
+        removeContainer: false  // Keep original container structure
+      })
+      
+      // Restore original transforms
+      elementsWithTransform.forEach((el, index) => {
+        const htmlEl = el as HTMLElement
+        if (originalTransforms[index] !== undefined) {
+          htmlEl.style.transform = originalTransforms[index]
+        }
+      })
+      element.style.transform = mainElementTransform
       
       console.log(`Badge ${i + 1}: Canvas created ${canvas.width}x${canvas.height}`)
       
-      // Convert to image data
+      // Convert to image data (using JPEG for better performance at high resolution)
       let imgData: string
       try {
-        imgData = canvas.toDataURL('image/png', 1.0)
+        imgData = canvas.toDataURL('image/jpeg', 0.95)  // High quality JPEG
       } catch (dataUrlError) {
         console.error(`Badge ${i + 1}: Failed to convert canvas to data URL (likely tainted):`, dataUrlError)
         // Try using blob method as fallback
@@ -82,7 +122,7 @@ export async function generateBadgesPDF(
           canvas.toBlob((blob) => {
             if (blob) resolve(blob)
             else reject(new Error('Failed to create blob'))
-          }, 'image/png', 1.0)
+          }, 'image/jpeg', 0.95)
         })
         imgData = await new Promise<string>((resolve) => {
           const reader = new FileReader()
@@ -97,8 +137,8 @@ export async function generateBadgesPDF(
         pdf.addPage([pageWidth, pageHeight])
       }
       
-      // Add image to PDF
-      pdf.addImage(imgData, 'PNG', 0, 0, pageWidth, pageHeight)
+      // Add image to PDF with compression settings for quality
+      pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'FAST')
       
       console.log(`Badge ${i + 1}: Added to PDF`)
       

@@ -122,6 +122,11 @@ export default function EnhancedBadgeComponent({ badgeData, template, fieldConfi
   const nameField = fields.find(f => f.label.toLowerCase().includes('name') || f.label.toLowerCase() === 'holder name')
   const otherFields = fields.filter(f => f !== nameField && f.value.trim() !== '')
   
+  // Debug: Log name field info
+  if (!hasLogged && nameField) {
+    console.log(`Badge ${isBack ? 'BACK' : 'FRONT'}: nameField = ${nameField.label}: "${nameField.value}"`)
+  }
+  
   // Debug field processing - only log once
   useEffect(() => {
     if (!hasLogged) {
@@ -145,19 +150,12 @@ export default function EnhancedBadgeComponent({ badgeData, template, fieldConfi
     width: `${fullWidth}mm`,
     height: `${fullHeight}mm`,
     backgroundColor: template.backgroundColor || '#ffffff',
-    backgroundImage: testWithoutBackground ? undefined : (backgroundImage ? `url(${backgroundImage})` : undefined),
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-    backgroundRepeat: 'no-repeat',
     border: '1px solid #e5e7eb', // Light border for screen display only
     padding: `${bleed}mm`,
     boxSizing: 'border-box' as const,
     position: 'relative' as const,
-    // Additional properties for html2canvas compatibility
     overflow: 'hidden',
-    isolation: 'isolate' as const, // Create a new stacking context
-    willChange: 'auto', // Disable hardware acceleration that can cause rendering issues
-    backfaceVisibility: 'visible' as const
+    isolation: 'isolate' as const
   }
 
   const contentStyle = {
@@ -173,7 +171,24 @@ export default function EnhancedBadgeComponent({ badgeData, template, fieldConfi
 
   return (
     <div className="badge print:break-after-always print:break-inside-avoid" style={badgeStyle}>
-      <div style={contentStyle}>
+      {/* Background image as img element for better html2canvas compatibility */}
+      {backgroundImage && !testWithoutBackground && (
+        <img 
+          src={backgroundImage}
+          alt=""
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            objectPosition: 'center',
+            zIndex: 0
+          }}
+        />
+      )}
+      <div style={{ ...contentStyle, position: 'relative', zIndex: 1 }}>
         {/* Header with event name */}
         {template.showEventName !== false && (
           <div className="text-center py-2 text-xs text-gray-600 font-medium">
