@@ -280,15 +280,14 @@ export default function EnhancedBadgeComponent({ badgeData, template, fieldConfi
             marginRight: `-${template.bleed}mm`,
             marginBottom: `-${template.bleed}mm`,
             height: '12mm',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
             textAlign: 'center',
-            lineHeight: '1.2',
-            fontSize: '14px'
+            fontSize: '14px',
+            paddingTop: '1mm',
+            paddingBottom: '0.1mm',  // Add padding bottom to push text up visually
+            boxSizing: 'border-box' as const
           }}
         >
-          <span style={{ margin: 'auto' }}>{ticketType.name}</span>
+          {ticketType.name}
         </div>
       </div>
       
