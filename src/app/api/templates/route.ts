@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import type { Template } from '@/types/config'
 
 export async function GET() {
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     // Upload image to Supabase storage if provided
     if (imageFile) {
       const imageBuffer = await imageFile.arrayBuffer()
-      const { data, error } = await supabaseAdmin.storage
+      const { data, error } = await supabase.storage
         .from('template-images')
         .upload(`${templateData.id}.${imageFile.name.split('.').pop()}`, imageBuffer, {
           contentType: imageFile.type,
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Get public URL
-      const { data: publicData } = supabaseAdmin.storage
+      const { data: publicData } = supabase.storage
         .from('template-images')
         .getPublicUrl(data.path)
       
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Save template to database
-    const { error: dbError } = await supabaseAdmin
+    const { error: dbError } = await supabase
       .from('templates')
       .insert({
         id: templateData.id,
@@ -116,13 +116,13 @@ export async function PUT(request: NextRequest) {
     if (imageFile) {
       // Delete old image first if it exists
       try {
-        const { data: files } = await supabaseAdmin.storage
+        const { data: files } = await supabase.storage
           .from('template-images')
           .list('', { search: `${templateData.id}.` })
         
         if (files && files.length > 0) {
           const filesToDelete = files.map(file => file.name)
-          await supabaseAdmin.storage
+          await supabase.storage
             .from('template-images')
             .remove(filesToDelete)
         }
@@ -131,7 +131,7 @@ export async function PUT(request: NextRequest) {
       }
       
       const imageBuffer = await imageFile.arrayBuffer()
-      const { data, error } = await supabaseAdmin.storage
+      const { data, error } = await supabase.storage
         .from('template-images')
         .upload(`${templateData.id}.${imageFile.name.split('.').pop()}`, imageBuffer, {
           contentType: imageFile.type,
@@ -144,7 +144,7 @@ export async function PUT(request: NextRequest) {
       }
       
       // Get public URL
-      const { data: publicData } = supabaseAdmin.storage
+      const { data: publicData } = supabase.storage
         .from('template-images')
         .getPublicUrl(data.path)
       
@@ -152,7 +152,7 @@ export async function PUT(request: NextRequest) {
     }
     
     // Update template in database
-    const { error: dbError } = await supabaseAdmin
+    const { error: dbError } = await supabase
       .from('templates')
       .update({
         name: templateData.name,
@@ -197,7 +197,7 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Delete template from database
-    const { error: dbError } = await supabaseAdmin
+    const { error: dbError } = await supabase
       .from('templates')
       .delete()
       .eq('id', templateId)
@@ -209,13 +209,13 @@ export async function DELETE(request: NextRequest) {
     
     // Delete associated images from storage
     try {
-      const { data: files } = await supabaseAdmin.storage
+      const { data: files } = await supabase.storage
         .from('template-images')
         .list('', { search: `${templateId}.` })
       
       if (files && files.length > 0) {
         const filesToDelete = files.map(file => file.name)
-        await supabaseAdmin.storage
+        await supabase.storage
           .from('template-images')
           .remove(filesToDelete)
       }

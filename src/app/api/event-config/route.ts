@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { supabase, supabaseAdmin } from '@/lib/supabase'
+import { supabase } from '@/lib/supabase'
 import type { EventConfiguration } from '@/types/config'
 
 export async function GET(request: NextRequest) {
@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
     const config: EventConfiguration = await request.json()
     
     // Upsert (insert or update) the configuration
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from('event_configurations')
       .upsert({
         event_id: config.eventId,
@@ -121,7 +121,7 @@ export async function DELETE(request: NextRequest) {
     }
     
     // Delete event configuration from database
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from('event_configurations')
       .delete()
       .eq('event_id', eventId)
