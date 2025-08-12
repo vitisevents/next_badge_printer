@@ -12,10 +12,10 @@ import '../styles/badge-flip.css'
 interface EnhancedBadgeGeneratorProps {
   event: Event
   ticketTypes: TicketType[]
-  onBack: () => void
+  eventApiKey?: string
 }
 
-export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: EnhancedBadgeGeneratorProps) {
+export default function EnhancedBadgeGenerator({ event, ticketTypes, eventApiKey }: EnhancedBadgeGeneratorProps) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
   const [tickets, setTickets] = useState<any[]>([])
@@ -110,7 +110,9 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
       }
       
               clientLogger.log('TICKETS', { url })
-        const response = await fetch(url)
+        const response = await fetch(url, {
+          headers: eventApiKey ? { 'X-API-Key': eventApiKey } : undefined
+        })
         if (!response.ok) {
           throw new Error('Failed to fetch tickets')
         }
@@ -356,13 +358,6 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
               >
                 Try again
               </button>
-              <button
-                type="button"
-                onClick={onBack}
-                className="bg-gray-100 px-3 py-2 rounded-md text-sm font-medium text-gray-800 hover:bg-gray-200"
-              >
-                Back to Events
-              </button>
             </div>
           </div>
         </div>
@@ -373,14 +368,8 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, onBack }: E
   return (
     <div>
       <div className="no-print mb-6">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
           <h2 className="text-xl font-semibold text-gray-900">Enhanced Badge Generation for {event.name}</h2>
-          <button
-            onClick={onBack}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-          >
-            Back to Events
-          </button>
         </div>
 
         {/* Date Range Filter */}

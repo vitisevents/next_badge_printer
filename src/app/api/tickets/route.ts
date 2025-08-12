@@ -6,7 +6,8 @@ const API_BASE = 'https://api.tickettailor.com/v1'
 
 export async function GET(request: NextRequest) {
   try {
-    const apiKey = process.env.TT_APIKEY
+    // Try to get API key from header first, fallback to environment variable
+    const apiKey = request.headers.get('X-API-Key') || process.env.TT_APIKEY
     if (!apiKey) {
       return NextResponse.json({ error: 'API key not configured' }, { status: 500 })
     }
