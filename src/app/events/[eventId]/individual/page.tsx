@@ -393,7 +393,7 @@ export default function IndividualBadgePage() {
                       id="name"
                       value={badgeData.name}
                       onChange={(e) => updateBadgeData('name', e.target.value)}
-                      disabled={selectedAttendee && !editingName}
+                      disabled={!!selectedAttendee && !editingName}
                       placeholder="Enter full name"
                     />
                     {editingName && (

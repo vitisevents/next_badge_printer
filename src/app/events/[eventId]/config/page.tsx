@@ -100,7 +100,8 @@ export default function EventConfigPage() {
             ticketTypeColors: {},
             ticketTypeNames: {},
             customFields: [],
-            badgeFields: []
+            badgeFields: [],
+            updatedAt: new Date().toISOString()
           })
         }
       }

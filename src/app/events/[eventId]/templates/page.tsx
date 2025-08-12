@@ -80,7 +80,7 @@ export default function EventTemplatesPage() {
           <h2 className="text-xl font-semibold text-gray-900">Template Management for {event.name}</h2>
           <p className="text-gray-600 mt-1">Create and manage badge templates for this event</p>
         </div>
-        <TemplateManager eventId={eventId} />
+        <TemplateManager />
       </div>
     </EventLayout>
   )
