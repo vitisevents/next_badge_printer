@@ -17,7 +17,8 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
       return {
         ...template,
         nameColor: template.nameColor || '#111827',
-        nameFontSize: template.nameFontSize || 24
+        nameFontSize: template.nameFontSize || 24,
+        displayFields: template.displayFields || ['holder_name']
       }
     }
     
@@ -30,6 +31,7 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
       bleed: 3,
       nameColor: '#111827',
       nameFontSize: 24,
+      displayFields: ['holder_name'],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     }
@@ -339,6 +341,52 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
                 </div>
                 <p className="mt-1 text-xs text-gray-500">
                   Used when no background image is set
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-gray-200 rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Badge Content</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Display Fields
+                </label>
+                <p className="text-xs text-gray-500 mb-3">
+                  Choose which fields to display on badges created with this template
+                </p>
+                <div className="space-y-2">
+                  {[
+                    { id: 'holder_name', label: 'Name', required: true },
+                    { id: 'job_title', label: 'Job Title', required: false },
+                    { id: 'company', label: 'Company', required: false },
+                    { id: 'holder_email', label: 'Email Address', required: false }
+                  ].map((field) => (
+                    <label key={field.id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.displayFields?.includes(field.id) || field.required}
+                        disabled={field.required}
+                        onChange={(e) => {
+                          const currentFields = formData.displayFields || ['holder_name']
+                          if (e.target.checked) {
+                            handleInputChange('displayFields', [...currentFields, field.id])
+                          } else {
+                            handleInputChange('displayFields', currentFields.filter(f => f !== field.id))
+                          }
+                        }}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
+                      />
+                      <span className={`text-sm ${field.required ? 'font-medium text-gray-900' : 'text-gray-700'}`}>
+                        {field.label} {field.required && <span className="text-red-500">*</span>}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  Selected fields: {(formData.displayFields || ['holder_name']).join(', ')}
                 </p>
               </div>
             </div>

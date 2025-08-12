@@ -37,6 +37,14 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, eventApiKey
     ])
   }, [event.id])
 
+  // Update selected fields when template changes
+  useEffect(() => {
+    if (selectedTemplate?.displayFields && selectedTemplate.displayFields.length > 0) {
+      const templateFields = new Set(selectedTemplate.displayFields)
+      setSelectedFields(templateFields)
+    }
+  }, [selectedTemplate])
+
   useEffect(() => {
     // Select all ticket types by default
     const allTypeIds = new Set(ticketTypes.map(t => t.id))
@@ -118,22 +126,23 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, eventApiKey
         }
         
         const data = await response.json()
+        const tickets = data.tickets || data // Handle both new and old response formats
         clientLogger.log('TICKETS', {
-          count: data.length,
-          sampleTicket: data[0] ? {
-            id: data[0].id,
-            holder_name: data[0].holder_name,
-            holder_email: data[0].holder_email,
-            ticket_type_id: data[0].ticket_type_id,
-            custom_fields: data[0].custom_fields
+          count: tickets.length,
+          sampleTicket: tickets[0] ? {
+            id: tickets[0].id,
+            holder_name: tickets[0].holder_name,
+            holder_email: tickets[0].holder_email,
+            ticket_type_id: tickets[0].ticket_type_id,
+            custom_fields: tickets[0].custom_fields
           } : null
         })
       
-      setTickets(data)
+      setTickets(tickets)
       
       // Extract unique ticket types and select all by default
       const uniqueTicketTypes = new Set<string>()
-      data.forEach((ticket: any) => {
+      tickets.forEach((ticket: any) => {
         if (ticket.ticket_type_id) {
           uniqueTicketTypes.add(ticket.ticket_type_id)
         }
@@ -144,7 +153,7 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, eventApiKey
       
       // Extract available fields from tickets
       const fieldsSet = new Set<string>()
-      data.forEach((ticket: any) => {
+      tickets.forEach((ticket: any) => {
         // Add standard fields
         Object.keys(ticket).forEach(key => {
           if (!['custom_fields'].includes(key)) {

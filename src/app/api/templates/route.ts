@@ -26,6 +26,7 @@ export async function GET() {
       nameColor: t.name_color,
       nameFontSize: t.name_font_size,
       showEventName: t.show_event_name,
+      displayFields: t.display_fields || ['holder_name'],
       qrCode: t.qr_code_settings,
       createdAt: t.created_at,
       updatedAt: t.updated_at
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
         name_color: templateData.nameColor,
         name_font_size: templateData.nameFontSize,
         show_event_name: templateData.showEventName || false,
+        display_fields: templateData.displayFields || ['holder_name'],
         qr_code_settings: templateData.qrCode || null
       })
     
@@ -164,6 +166,7 @@ export async function PUT(request: NextRequest) {
         name_color: templateData.nameColor,
         name_font_size: templateData.nameFontSize,
         show_event_name: templateData.showEventName || false,
+        display_fields: templateData.displayFields || ['holder_name'],
         qr_code_settings: templateData.qrCode || null,
         updated_at: new Date().toISOString()
       })

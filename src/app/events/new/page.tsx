@@ -49,11 +49,12 @@ export default function NewEventPage() {
     try {
       // Test the API connection by fetching event details
       const response = await fetch(`/api/tickettailor/events/${eventId}`, {
+        method: 'GET',
         headers: {
-          'X-API-Key': apiKey
+          'X-API-Key': apiKey,
+          'Content-Type': 'application/json'
         }
       })
-
       if (!response.ok) {
         if (response.status === 401) {
           throw new Error('Invalid API key')
@@ -65,7 +66,16 @@ export default function NewEventPage() {
       }
 
       const data = await response.json()
-      setEventData(data.event || data) // Handle different response structures
+      const eventInfo = data.event || data
+      
+      // Strip HTML tags from description
+      if (eventInfo.description) {
+        const tempDiv = document.createElement('div')
+        tempDiv.innerHTML = eventInfo.description
+        eventInfo.description = tempDiv.textContent || tempDiv.innerText || ''
+      }
+      
+      setEventData(eventInfo) // Handle different response structures
     } catch (err) {
       console.error('Error validating event:', err)
       setError(err instanceof Error ? err.message : 'Failed to validate event')

@@ -39,6 +39,11 @@ export default function EventLayout({ eventId, eventName, currentSection, childr
           href: `/events/${eventId}/badges`
         },
         {
+          id: 'individual',
+          label: 'Individual Badge',
+          href: `/events/${eventId}/individual`
+        },
+        {
           id: 'templates',
           label: 'Manage Templates',
           href: `/events/${eventId}/templates`
@@ -46,10 +51,10 @@ export default function EventLayout({ eventId, eventName, currentSection, childr
       ]
     },
     {
-      id: 'settings',
-      label: 'Event Settings',
+      id: 'config',
+      label: 'Event Configuration',
       icon: <Settings className="w-4 h-4" />,
-      href: `/events/${eventId}/settings`
+      href: `/events/${eventId}/config`
     }
   ]
 

@@ -13,9 +13,10 @@ export async function GET(request: NextRequest) {
     }
 
     const { searchParams } = new URL(request.url)
-    const eventId = searchParams.get('event_id')
+    const eventId = searchParams.get('event_id') || searchParams.get('eventId')
     const dateFrom = searchParams.get('date_from') // ISO date string (YYYY-MM-DD)
     const dateTo = searchParams.get('date_to') // ISO date string (YYYY-MM-DD)
+    const searchQuery = searchParams.get('search')
     
     if (!eventId) {
       return NextResponse.json({ error: 'event_id is required' }, { status: 400 })
@@ -197,6 +198,21 @@ export async function GET(request: NextRequest) {
     
     console.log(`Found ${tickets.length} tickets for event ${eventId}`)
     
+    // Apply search filter if provided
+    let filteredTickets = tickets
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      filteredTickets = tickets.filter((ticket: any) => 
+        ticket.holder_name?.toLowerCase().includes(query) ||
+        ticket.holder_email?.toLowerCase().includes(query) ||
+        ticket.ticket_description?.toLowerCase().includes(query) ||
+        Object.values(ticket.custom_fields || {}).some((value: any) => 
+          typeof value === 'string' && value.toLowerCase().includes(query)
+        )
+      )
+      console.log(`Search "${searchQuery}" returned ${filteredTickets.length} results`)
+    }
+    
     // Write debug log to file
     debugLog.push({
       message: 'Final summary',
@@ -215,7 +231,7 @@ export async function GET(request: NextRequest) {
       console.error('Failed to write debug log:', err)
     }
     
-    return NextResponse.json(tickets)
+    return NextResponse.json({ tickets: filteredTickets })
   } catch (error) {
     console.error('Error fetching tickets:', error)
     return NextResponse.json({ error: 'Failed to fetch tickets' }, { status: 500 })

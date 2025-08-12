@@ -29,6 +29,7 @@ export interface Template {
   nameColor?: string // Font color for the main name (default: #111827)
   nameFontSize?: number // Font size for the main name in px (default: 24)
   qrCode?: QRCodeSettings
+  displayFields?: string[] // Which fields to display on badges (e.g., ['holder_name', 'job_title', 'company'])
   createdAt: string
   updatedAt: string
 }

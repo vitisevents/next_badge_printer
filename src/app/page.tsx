@@ -60,6 +60,13 @@ export default function Dashboard() {
     })
   }
 
+  const stripHtml = (html: string | null) => {
+    if (!html) return null
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = html
+    return tempDiv.textContent || tempDiv.innerText || ''
+  }
+
   // Show loading spinner while checking authentication
   if (isLoading) {
     return (
@@ -151,7 +158,7 @@ export default function Dashboard() {
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {event.description && (
-                    <p className="text-sm text-gray-600 line-clamp-2">{event.description}</p>
+                    <p className="text-sm text-gray-600 line-clamp-2">{stripHtml(event.description)}</p>
                   )}
                   
                   {(event.start_date || event.end_date) && (
