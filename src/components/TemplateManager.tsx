@@ -5,12 +5,17 @@ import type { Template } from '@/types/config'
 import { ISO_PAGE_SIZES, DEFAULT_PAGE_SIZE } from '@/lib/pageSizes'
 import TemplateEditor from './TemplateEditor'
 
-export default function TemplateManager() {
+interface TemplateManagerProps {
+  eventId?: string
+}
+
+export default function TemplateManager({ eventId }: TemplateManagerProps) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [showEditor, setShowEditor] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null)
+  const [isNewTemplate, setIsNewTemplate] = useState(false)
 
   useEffect(() => {
     fetchTemplates()
@@ -21,7 +26,8 @@ export default function TemplateManager() {
       setLoading(true)
       setError(null)
       
-      const response = await fetch('/api/templates')
+      const url = eventId ? `/api/templates?eventId=${eventId}` : '/api/templates'
+      const response = await fetch(url)
       if (!response.ok) {
         throw new Error('Failed to fetch templates')
       }
@@ -36,8 +42,13 @@ export default function TemplateManager() {
   }
 
   const handleCreateTemplate = () => {
+    // Use UUID for event templates, timestamp-based ID for global templates
+    const templateId = eventId 
+      ? crypto.randomUUID() 
+      : `template_${Date.now()}`
+    
     const newTemplate: Template = {
-      id: `template_${Date.now()}`,
+      id: templateId,
       name: 'New Template',
       description: '',
       pageSize: DEFAULT_PAGE_SIZE,
@@ -47,11 +58,13 @@ export default function TemplateManager() {
       updatedAt: new Date().toISOString()
     }
     setEditingTemplate(newTemplate)
+    setIsNewTemplate(true)
     setShowEditor(true)
   }
 
   const handleEditTemplate = (template: Template) => {
     setEditingTemplate(template)
+    setIsNewTemplate(false)
     setShowEditor(true)
   }
 
@@ -61,7 +74,8 @@ export default function TemplateManager() {
     }
 
     try {
-      const response = await fetch(`/api/templates?id=${templateId}`, {
+      const url = eventId ? `/api/templates?id=${templateId}&eventId=${eventId}` : `/api/templates?id=${templateId}`
+      const response = await fetch(url, {
         method: 'DELETE'
       })
 
@@ -80,16 +94,20 @@ export default function TemplateManager() {
     await fetchTemplates()
     setShowEditor(false)
     setEditingTemplate(null)
+    setIsNewTemplate(false)
   }
 
   if (showEditor) {
     return (
       <TemplateEditor
-        template={editingTemplate}
+        template={isNewTemplate ? null : editingTemplate}
+        initialData={editingTemplate}
+        eventId={eventId}
         onSave={handleSaveTemplate}
         onCancel={() => {
           setShowEditor(false)
           setEditingTemplate(null)
+          setIsNewTemplate(false)
         }}
       />
     )

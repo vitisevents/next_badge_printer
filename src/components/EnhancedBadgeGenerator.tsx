@@ -13,9 +13,10 @@ interface EnhancedBadgeGeneratorProps {
   event: Event
   ticketTypes: TicketType[]
   eventApiKey?: string
+  eventId?: string
 }
 
-export default function EnhancedBadgeGenerator({ event, ticketTypes, eventApiKey }: EnhancedBadgeGeneratorProps) {
+export default function EnhancedBadgeGenerator({ event, ticketTypes, eventApiKey, eventId }: EnhancedBadgeGeneratorProps) {
   const [templates, setTemplates] = useState<Template[]>([])
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null)
   const [tickets, setTickets] = useState<any[]>([])
@@ -54,7 +55,8 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, eventApiKey
   const fetchTemplates = async () => {
           try {
         clientLogger.log('TEMPLATES', 'Fetching templates...')
-        const response = await fetch('/api/templates')
+        const url = eventId ? `/api/templates?eventId=${eventId}` : '/api/templates'
+        const response = await fetch(url)
         clientLogger.log('TEMPLATES', `Response status: ${response.status}`)
         
         if (response.ok) {
@@ -462,8 +464,11 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, eventApiKey
           {/* Ticket Type Selection */}
           <div>
             <h3 className="text-lg font-medium text-gray-900 mb-3">Ticket Types</h3>
-            <div className="space-y-2 max-h-32 overflow-y-auto">
-              {ticketTypes.map((ticketType) => (
+            <div className="space-y-2 max-h-48 overflow-y-auto border border-gray-200 rounded p-2">
+              {ticketTypes.length === 0 ? (
+                <p className="text-sm text-gray-500">No ticket types available</p>
+              ) : (
+                ticketTypes.map((ticketType) => (
                 <label key={ticketType.id} className="flex items-center space-x-2">
                   <input
                     type="checkbox"
@@ -479,7 +484,8 @@ export default function EnhancedBadgeGenerator({ event, ticketTypes, eventApiKey
                     <span className="text-sm font-medium text-gray-900 truncate">{ticketType.name}</span>
                   </div>
                 </label>
-              ))}
+              ))
+              )}
             </div>
           </div>
 

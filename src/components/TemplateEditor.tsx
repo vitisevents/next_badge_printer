@@ -5,25 +5,33 @@ import type { Template } from '@/types/config'
 import { ISO_PAGE_SIZES } from '@/lib/pageSizes'
 
 interface TemplateEditorProps {
-  template: Template | null
+  template: Template | null  // null = POST (create), not null = PUT (update)
+  initialData?: Template | null  // Initial form data
+  eventId?: string
   onSave: () => void
   onCancel: () => void
 }
 
-export default function TemplateEditor({ template, onSave, onCancel }: TemplateEditorProps) {
+export default function TemplateEditor({ template, initialData, eventId, onSave, onCancel }: TemplateEditorProps) {
   const [formData, setFormData] = useState<Template>(() => {
-    if (template) {
+    const dataSource = initialData || template
+    if (dataSource) {
       // Ensure existing templates have nameColor and nameFontSize for backward compatibility
       return {
-        ...template,
-        nameColor: template.nameColor || '#111827',
-        nameFontSize: template.nameFontSize || 24,
-        displayFields: template.displayFields || ['holder_name']
+        ...dataSource,
+        nameColor: dataSource.nameColor || '#111827',
+        nameFontSize: dataSource.nameFontSize || 24,
+        displayFields: dataSource.displayFields || ['holder_name']
       }
     }
     
+    // Use UUID for event templates, timestamp-based ID for global templates
+    const templateId = eventId 
+      ? crypto.randomUUID() 
+      : `template_${Date.now()}`
+    
     return {
-      id: `template_${Date.now()}`,
+      id: templateId,
       name: 'New Template',
       description: '',
       pageSize: ISO_PAGE_SIZES[0],
@@ -98,6 +106,10 @@ export default function TemplateEditor({ template, onSave, onCancel }: TemplateE
       
       const formDataToSend = new FormData()
       formDataToSend.append('template', JSON.stringify(formData))
+      
+      if (eventId) {
+        formDataToSend.append('eventId', eventId)
+      }
       
       if (selectedImage) {
         formDataToSend.append('image', selectedImage)

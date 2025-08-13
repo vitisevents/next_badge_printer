@@ -119,7 +119,11 @@ export default function EnhancedBadgeComponent({ badgeData, template, fieldConfi
   }
   
   // Find the main name field (usually holder_name)
-  const nameField = fields.find(f => f.label.toLowerCase().includes('name') || f.label.toLowerCase() === 'holder name')
+  const nameField = fields.find(f => 
+    f.label.toLowerCase().includes('holder') && f.label.toLowerCase().includes('name') ||
+    f.label.toLowerCase() === 'holder name' ||
+    f.label.toLowerCase().includes('name') && !f.label.toLowerCase().includes('event')
+  )
   const otherFields = fields.filter(f => f !== nameField && f.value.trim() !== '')
   
   // Debug: Log name field info

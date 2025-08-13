@@ -77,7 +77,7 @@ export default function EventBadgesPage() {
       setTicketTailorEvent(transformedEvent)
 
       // Fetch ticket types
-      const ticketTypesResponse = await fetch(`/api/tickets?eventId=${event.tickettailor_event_id}`, {
+      const ticketTypesResponse = await fetch(`/api/ticket-types?event_id=${event.tickettailor_event_id}`, {
         headers: {
           'X-API-Key': event.tickettailor_api_key
         }
@@ -85,7 +85,7 @@ export default function EventBadgesPage() {
 
       if (ticketTypesResponse.ok) {
         const ticketTypesData = await ticketTypesResponse.json()
-        setTicketTypes(ticketTypesData.ticketTypes || [])
+        setTicketTypes(ticketTypesData.ticketTypes || ticketTypesData || [])
       }
 
     } catch (err) {
@@ -125,6 +125,7 @@ export default function EventBadgesPage() {
         event={ticketTailorEvent}
         ticketTypes={ticketTypes}
         eventApiKey={dbEvent.tickettailor_api_key}
+        eventId={eventId}
       />
     </EventLayout>
   )

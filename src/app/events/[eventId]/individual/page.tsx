@@ -133,8 +133,8 @@ export default function IndividualBadgePage() {
         }
       }
 
-      // Fetch templates
-      const templatesResponse = await fetch('/api/templates')
+      // Fetch templates (event-specific)
+      const templatesResponse = await fetch(`/api/templates?eventId=${eventId}`)
       if (templatesResponse.ok) {
         const templatesData = await templatesResponse.json()
         const actualTemplates = templatesData.templates || templatesData // Handle response format

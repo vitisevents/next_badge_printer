@@ -156,10 +156,10 @@ export async function GET(request: NextRequest) {
         order.issued_tickets.forEach((ticket: any) => {
           // Only include valid tickets, not voided ones
           if (ticket.status !== 'voided' && !ticket.voided_at) {
-          // Merge ticket and order custom questions
+          // Start with ticket-level custom questions (individual attendee data)
           const customQuestions: Record<string, string> = {}
           
-          // Add ticket-level custom questions
+          // Add ticket-level custom questions FIRST (these are individual attendee details)
           if (ticket.custom_questions) {
             ticket.custom_questions.forEach((q: any) => {
               if (q.question && q.answer) {
@@ -168,21 +168,44 @@ export async function GET(request: NextRequest) {
             })
           }
           
-          // Add order-level custom questions
+          // Add order-level custom questions ONLY if not already present from ticket level
           if (order.buyer_details.custom_questions) {
             order.buyer_details.custom_questions.forEach((q: any) => {
               if (q.question && q.answer) {
-                customQuestions[q.question.toLowerCase().replace(/[^a-z0-9]/g, '_')] = q.answer
+                const key = q.question.toLowerCase().replace(/[^a-z0-9]/g, '_')
+                // Only add if not already present from ticket-level questions
+                if (!customQuestions[key]) {
+                  customQuestions[key] = q.answer
+                }
               }
             })
+          }
+
+          // Determine holder name - prioritize individual ticket attendee details
+          let holderName = order.buyer_details.name || `${order.buyer_details.first_name} ${order.buyer_details.last_name}`.trim()
+          let holderEmail = order.buyer_details.email || ticket.email
+          
+          // Use individual ticket attendee details if available (these are the actual attendees)
+          if (ticket.full_name) {
+            holderName = ticket.full_name
+          } else if (ticket.first_name && ticket.last_name) {
+            holderName = `${ticket.first_name} ${ticket.last_name}`.trim()
+          } else if (ticket.first_name) {
+            holderName = ticket.first_name
+          } else if (ticket.last_name) {
+            holderName = ticket.last_name
+          }
+          
+          if (ticket.email) {
+            holderEmail = ticket.email
           }
 
           tickets.push({
             id: ticket.id,
             reference: ticket.barcode || ticket.id,
             ticket_type_id: ticket.ticket_type_id,
-            holder_name: order.buyer_details.name || `${order.buyer_details.first_name} ${order.buyer_details.last_name}`.trim(),
-            holder_email: order.buyer_details.email || ticket.email,
+            holder_name: holderName,
+            holder_email: holderEmail,
             order_id: order.id,
             custom_fields: customQuestions,
             ticket_description: ticket.description,
@@ -213,7 +236,7 @@ export async function GET(request: NextRequest) {
       console.log(`Search "${searchQuery}" returned ${filteredTickets.length} results`)
     }
     
-    // Write debug log to file
+    // Write debug log to file (development only)
     debugLog.push({
       message: 'Final summary',
       totalOrders: orders.length,
@@ -223,12 +246,16 @@ export async function GET(request: NextRequest) {
       sampleTickets: tickets.slice(0, 3)
     })
     
-    try {
-      const logPath = join(process.cwd(), 'debug-tickets.log')
-      writeFileSync(logPath, JSON.stringify(debugLog, null, 2))
-      console.log('Debug log written to:', logPath)
-    } catch (err) {
-      console.error('Failed to write debug log:', err)
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const logPath = join(process.cwd(), 'debug-tickets.log')
+        writeFileSync(logPath, JSON.stringify(debugLog, null, 2))
+        console.log('Debug log written to:', logPath)
+      } catch (err) {
+        console.error('Failed to write debug log:', err)
+      }
+    } else {
+      console.log('Debug log (production):', JSON.stringify(debugLog.slice(-1)[0], null, 2))
     }
     
     return NextResponse.json({ tickets: filteredTickets })

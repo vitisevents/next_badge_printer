@@ -68,13 +68,17 @@ export async function GET(request: NextRequest) {
       
       console.log(`Found ${enhancedTicketTypes.length} ticket types for event ${eventId}`)
       
-      // Write debug log
-      try {
-        const logPath = join(process.cwd(), 'debug-ticket-types.log')
-        writeFileSync(logPath, JSON.stringify(debugLog, null, 2))
-        console.log('Debug log written to:', logPath)
-      } catch (err) {
-        console.error('Failed to write debug log:', err)
+      // Write debug log (development only)
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          const logPath = join(process.cwd(), 'debug-ticket-types.log')
+          writeFileSync(logPath, JSON.stringify(debugLog, null, 2))
+          console.log('Debug log written to:', logPath)
+        } catch (err) {
+          console.error('Failed to write debug log:', err)
+        }
+      } else {
+        console.log('Debug log (production):', JSON.stringify(debugLog.slice(-1)[0], null, 2))
       }
       
       return NextResponse.json(enhancedTicketTypes)
@@ -182,13 +186,17 @@ export async function GET(request: NextRequest) {
       ticketTypes: enhancedTicketTypes
     })
     
-    // Write debug log
-    try {
-      const logPath = join(process.cwd(), 'debug-ticket-types.log')
-      writeFileSync(logPath, JSON.stringify(debugLog, null, 2))
-      console.log('Debug log written to:', logPath)
-    } catch (err) {
-      console.error('Failed to write debug log:', err)
+    // Write debug log (development only)
+    if (process.env.NODE_ENV === 'development') {
+      try {
+        const logPath = join(process.cwd(), 'debug-ticket-types.log')
+        writeFileSync(logPath, JSON.stringify(debugLog, null, 2))
+        console.log('Debug log written to:', logPath)
+      } catch (err) {
+        console.error('Failed to write debug log:', err)
+      }
+    } else {
+      console.log('Debug log (production):', JSON.stringify(debugLog.slice(-1)[0], null, 2))
     }
     
     return NextResponse.json(enhancedTicketTypes)
